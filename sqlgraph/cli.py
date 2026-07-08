@@ -76,9 +76,9 @@ def build(
              "可选值: table（表级视图，默认）, column（字段级视图）, sql（SQL 依赖视图）。",
     ),
     theme: str = typer.Option(
-        "dark",
+        "light",
         "--theme",
-        help="可视化主题（仅对 HTML 格式生效）。可选值: dark（深色主题，默认）, light（浅色主题）。",
+        help="可视化主题（仅对 HTML 格式生效）。可选值: light（浅色主题，默认）, dark（深色主题）。",
     ),
     schema: Optional[str] = typer.Option(
         None,
@@ -242,9 +242,9 @@ def demo(
         help="示例输出目录。",
     ),
     theme: str = typer.Option(
-        "dark",
+        "light",
         "--theme",
-        help="可视化主题，可选 dark/light。",
+        help="可视化主题，可选 light/dark。",
     ),
 ):
     """运行内置示例并自动打开浏览器

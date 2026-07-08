@@ -29,7 +29,7 @@ def main():
         graph,
         output_path=html_path,
         view='table',
-        theme='dark',
+        theme='light',
         title='广告素材血缘图',
         auto_open=False,
     )
