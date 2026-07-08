@@ -1,14 +1,14 @@
 [tool.poetry]
 name = "sqlgraph-lineage"
 version = "0.1.0"
-description = "A lightweight SQL lineage and data asset graph construction framework"
+description = "SQL-to-Knowledge-Graph engine for data warehouses: lineage, columns, and reusable transformation logic."
 authors = ["sqlgraph contributors"]
 license = "Apache-2.0"
 readme = "README.md"
 homepage = "https://github.com/Liyurun/SqlGraph"
 repository = "https://github.com/Liyurun/SqlGraph"
 documentation = "https://github.com/Liyurun/SqlGraph#readme"
-keywords = ["sql", "lineage", "knowledge-graph", "data-warehouse", "sqlglot"]
+keywords = ["sql", "lineage", "data-lineage", "knowledge-graph", "data-warehouse", "sqlglot", "graphrag", "data-governance"]
 packages = [{include = "sqlgraph"}]
 classifiers = [
     "Development Status :: 3 - Alpha",

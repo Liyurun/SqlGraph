@@ -6,9 +6,15 @@
 [![SQLGlot](https://img.shields.io/badge/parser-SQLGlot-green.svg)](https://github.com/tobymao/sqlglot)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-**Turn your data-warehouse SQL into an interactive knowledge graph.**
+**A SQL-to-Knowledge-Graph engine for modern data warehouses.**
 
-SqlGraph statically parses a folder of SQL and builds a property graph that captures not just *table/column lineage* but the **transformation logic** itself. Identical logic across different SQL files collapses onto **one shared node** via content fingerprinting — so you can see, at a glance, where the same computation is reused across your warehouse.
+SqlGraph turns scattered warehouse SQL into an interactive knowledge graph of
+tables, columns, and reusable transformation logic. It goes beyond traditional
+lineage tools: every SQL expression is fingerprinted, so the same business logic
+across different pipelines collapses into one shared node.
+
+Use SqlGraph to discover duplicated metrics, audit transformation logic, explain
+data flows, and turn your SQL assets into graph-ready knowledge for GraphRAG.
 
 English | [简体中文](README.zh-CN.md)
 
@@ -19,28 +25,54 @@ English | [简体中文](README.zh-CN.md)
 
 ---
 
-## Why SqlGraph?
+## Why not another lineage tool?
 
-Most lineage tools stop at "table A feeds table B". SqlGraph goes further:
+Traditional lineage tools answer:
 
-- **Logic as first-class nodes.** A composite expression like `ROUND(SUM(clicks) / COUNT(*), 4)` becomes a single transformation node, wired to the exact physical columns it reads and the output column it produces.
-- **Shared logic is deduplicated.** The same expression in two different SQL files resolves to the **same** node (identical 128-bit content fingerprint). Commutative operators are normalized, so `a + b` and `b + a` converge.
-- **Physically precise.** `SUM(impression.ad_id)` and `SUM(click.ad_id)` are *different* nodes — identity is bound to resolved physical columns, not textual similarity.
-- **Deterministic.** The same SQL always produces the same graph and the same node IDs, so diffs are meaningful and results are reproducible.
+> Which upstream tables feed this table?
 
-The result: **the graph fully reflects the SQL execution logic, and the SQL logic fully generates the graph.**
+SqlGraph answers:
 
-## Features
+> Which tables, columns, and transformation logic produced this result?
+> Where is the same business logic reused across my warehouse?
+> Can I turn SQL pipelines into a graph that downstream AI systems can reason over?
 
-| | |
+That is why SqlGraph models SQL expressions as reusable, deterministic graph
+nodes instead of treating SQL as opaque text.
+
+## What you get
+
+- **Expression-level knowledge graph**:
+  SQL files, tables, columns, and transformation logic are all first-class graph
+  nodes.
+
+- **Reusable business logic detection**:
+  Identical expressions across SQL files share the same 128-bit content
+  fingerprint. Commutative operators are normalized, so `a + b` and `b + a`
+  converge.
+
+- **Column-accurate dependencies**:
+  Each transformation node is linked to the exact physical columns it reads and
+  the output columns it produces. `SUM(impression.ad_id)` and `SUM(click.ad_id)`
+  stay distinct.
+
+- **Beautiful interactive visualization**:
+  Cytoscape.js + ELK layered layout, dark mode, search, large-graph truncation,
+  node-size controls, and PNG/SVG export.
+
+- **Graph-ready outputs**:
+  Export to HTML, CSV, JSON, GraphRAG payloads, and NetworkX for downstream
+  analysis and AI workflows.
+
+## Core capabilities
+
+| Capability | Details |
 |---|---|
-| **Multi-dialect parsing** | Spark / Hive / Presto / BigQuery / MySQL / Postgres … (powered by [SQLGlot](https://github.com/tobymao/sqlglot)) |
-| **Rich SQL coverage** | CTEs, sub-queries, `UNION ALL`, `JOIN`s, window functions, `CASE WHEN`, `CAST`, aggregates |
-| **Content-fingerprint DAG** | Merkle-style dedup of transformation logic across the whole codebase |
-| **Multiple outputs** | Interactive HTML, CSV (nodes/edges), GraphRAG JSON, plain JSON, NetworkX |
-| **Interactive visualization** | Cytoscape.js + ELK layered layout, light/dark themes, search, node-size control, PNG/SVG export |
-| **Scales** | 96/128-bit fingerprints for warehouses with millions of columns; large graphs render the top-1000 nodes first and load more on search |
-| **Simple API + CLI** | One function or one command to go from SQL folder to graph |
+| **SQL dialects** | Spark / Hive / Presto / BigQuery / MySQL / Postgres and more, powered by [SQLGlot](https://github.com/tobymao/sqlglot) |
+| **SQL constructs** | CTEs, sub-queries, `UNION ALL`, `JOIN`s, window functions, `CASE WHEN`, `CAST`, aggregates |
+| **Logic identity** | 128-bit expression fingerprints and 96-bit table/column IDs for deterministic large-scale graphs |
+| **Visualization scale** | Large graphs render the top-1000 nodes first and load more through search |
+| **Developer UX** | Simple Python API, Typer CLI, reusable examples, and CI-backed tests |
 
 ## Installation
 
