@@ -1,0 +1,48 @@
+examples/ads_pipeline/05_dws_creative_daily.sql
+  s_1b60a72b8136f1::t_20e0d3002fc8f0 1-45
+tests/test_integration/test_api.py
+  s_1b60a72b8136f1::t_1a69ed6292baa9 1-91
+examples/ads_pipeline/04_dws_ad_daily.sql
+  s_1b60a72b8136f1::t_9cf03888769015 1-12
+examples/ads_pipeline/schema.csv
+  s_1b60a72b8136f1::t_ab3aac20ef4cf6 1-25
+examples/ads_pipeline/02_stg_clicks.sql
+  s_1b60a72b8136f1::t_0de317ac231b22 1-14
+examples/ads_pipeline/03_dwd_ad_event.sql
+  s_1b60a72b8136f1::t_2ed99740d44983 1-37
+sqlgraph/cli.py
+  s_1b60a72b8136f1::t_4c2e18fe186840 1-326
+examples/ads_pipeline/01_stg_impressions.sql
+  s_1b60a72b8136f1::t_ef56a3862e875d 1-21
+sqlgraph/parser/base.py
+  s_1b60a72b8136f1::t_f41a2656c8f16b 265-266
+examples/ads_pipeline/06_ads_creative_report.sql
+  s_1b60a72b8136f1::t_60f0df953ee9ec 1-38
+sqlgraph/__init__.py
+  s_1b60a72b8136f1::t_45e3a6a79fbc54 1-22,24-25,27-42,44-45
+  s_1b60a72b8136f1::t_b6fefc7b5cadd2 23,26,43
+sqlgraph/api.py
+  s_1b60a72b8136f1::t_c05d7fb52b6e4c 1-97
+examples/ads_pipeline/run_demo.py
+  s_1b60a72b8136f1::t_69f04887503d1d 1-44
+pyproject.toml
+  s_1b60a72b8136f1::t_3f0edc658a1728 10-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8496641cd904dacd931170ab2543593f4c0920fd",
+  "prompts": {},
+  "sessions": {
+    "s_1b60a72b8136f1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4d39f510228724f522a4d4",
+        "model": "Doubao-Seed-2.1-Pro__dev"
+      },
+      "human_author": "Li Yuruan <1404020204@s.upc.edu.cn>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
