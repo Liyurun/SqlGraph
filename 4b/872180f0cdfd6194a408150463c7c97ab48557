@@ -1,0 +1,22 @@
+sqlgraph/utils/batch.py
+  s_1b60a72b8136f1::t_2ee8804aaaa9b1 2-3
+  s_1b60a72b8136f1::t_eef7a7be2e4e1a 1,4-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4b872180f0cdfd6194a408150463c7c97ab48557",
+  "prompts": {},
+  "sessions": {
+    "s_1b60a72b8136f1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4d39f510228724f522a4d4",
+        "model": "Doubao-Seed-2.1-Pro__dev"
+      },
+      "human_author": "Li Yuruan <1404020204@s.upc.edu.cn>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
