@@ -3,7 +3,7 @@
 SQLGraph 高层 Python API 模块。
 
 提供统一的高层入口函数 `build_graph`，封装了从输入源解析、Schema 加载、
-图构建到统计输出的完整流程，是用户使用 sqlgraph 的首选接口。
+图构建到统计输出的完整流程，是用户使用 SqlGraph 的首选接口。
 
 支持的输入源类型：
   - SQL 文件路径（单个 .sql 文件）

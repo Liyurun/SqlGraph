@@ -5,7 +5,24 @@ description = "A lightweight SQL lineage and data asset graph construction frame
 authors = ["sqlgraph contributors"]
 license = "Apache-2.0"
 readme = "README.md"
+homepage = "https://github.com/Liyurun/SqlGraph"
+repository = "https://github.com/Liyurun/SqlGraph"
+documentation = "https://github.com/Liyurun/SqlGraph#readme"
+keywords = ["sql", "lineage", "knowledge-graph", "data-warehouse", "sqlglot"]
 packages = [{include = "sqlgraph"}]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
 
 [tool.poetry.scripts]
 sqlgraph = "sqlgraph.cli:main"

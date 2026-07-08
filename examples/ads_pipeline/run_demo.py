@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""一键运行 AdTech 示例：解析所有 SQL 并生成精美可视化 HTML"""
+"""一键运行 AdTech 示例：解析所有 SQL 并生成可视化 HTML"""
 import os
 import sys
 import webbrowser
@@ -15,7 +15,7 @@ OUTPUT_DIR = os.path.join(os.path.dirname(DEMO_DIR), '..', 'demo_output')
 
 def main():
     print("=" * 60, flush=True)
-    print("  sqlGraph AdTech Demo - 广告素材血缘分析", flush=True)
+    print("  SqlGraph AdTech Demo - Ad pipeline lineage", flush=True)
     print("=" * 60, flush=True)
     schema_path = os.path.join(DEMO_DIR, 'schema.csv')
     if not os.path.isfile(schema_path):
@@ -30,7 +30,7 @@ def main():
         output_path=html_path,
         view='table',
         theme='light',
-        title='广告素材血缘图',
+        title='SqlGraph',
         auto_open=False,
     )
     abs_path = os.path.abspath(html_path)

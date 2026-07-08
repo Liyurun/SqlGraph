@@ -7,6 +7,50 @@ from sqlglot import exp
 from sqlgraph.utils.logging import log_info, log_warn
 from sqlgraph.input.csv_schema import SchemaRegistry
 from sqlgraph.utils.errors import SqlParseError
+from sqlgraph.parser import expr_dag
+
+
+# 无法确定归属物理表时的占位表名
+UNKNOWN_TABLE = "UNKNOWN"
+
+
+class ColumnResolver:
+    """列 → 物理表解析器
+
+    捕获当前 SELECT 作用域的上下文快照（源表、别名映射、schema），
+    把 sqlglot 的 exp.Column 解析成物理列串 "table.column"。
+
+    解析顺序：
+    1. 有限定名：经别名映射到物理表；
+    2. 无限定名、仅单一源表：绑定到该表；
+    3. 无限定名、多表：用 schema 消歧（唯一匹配才采纳）；
+    4. 都无法确定：绑定到 UNKNOWN 占位表，绝不瞎猜。
+    """
+
+    def __init__(self, source_tables: list[str], alias_map: dict, schema_registry: SchemaRegistry | None,
+                 all_sources: list[str] | None = None):
+        self.source_tables = list(source_tables)
+        # 包含 CTE 在内的全部候选源表，用于单源绑定与消歧
+        self.all_sources = list(all_sources) if all_sources is not None else list(source_tables)
+        self.alias_map = dict(alias_map)
+        self.schema_registry = schema_registry
+
+    def resolve(self, col) -> str:
+        """把 exp.Column 解析为 "table.column" 物理列串"""
+        col_name = col.name
+        table_part = col.table
+        if table_part:
+            resolved_table = self.alias_map.get(table_part, table_part)
+            return f"{resolved_table}.{col_name}"
+        # 无限定名、唯一候选源表（含 CTE）：直接绑定
+        if len(self.all_sources) == 1:
+            return f"{self.all_sources[0]}.{col_name}"
+        # 无限定名、多源：优先用 schema 在物理源表中消歧
+        if self.schema_registry and len(self.source_tables) > 1:
+            hit = self.schema_registry.resolve_column(col_name, self.source_tables)
+            if hit:
+                return hit
+        return f"{UNKNOWN_TABLE}.{col_name}"
 
 
 def _gen_id(prefix: str = "n") -> str:
@@ -34,7 +78,9 @@ class SqlParseResult:
         source_tables: 源表列表，每个元素为 {name, alias, is_cte}
         target_tables: 目标表列表，每个元素为 {name, is_cte}
         cte_tables: CTE 表列表，每个元素为 {name, is_cte}
-        columns: 字段列表，每个元素为 {name, table, transform_expr, transform_type, source_columns}
+        columns: 字段列表，每个元素含 name/table 及表达式 DAG 字段
+                 (passthrough, physical_column, expr_root, expr_nodes)，
+                 并保留兼容字段 (transform_expr, transform_type, source_columns)
         errors: 解析过程中的错误信息列表
     """
     def __init__(self):
@@ -88,6 +134,7 @@ class SqlParser:
         result.dialect = self.dialect or ""
         self._cte_aliases = {}
         self._current_source_tables = []
+        self._current_all_sources = []
         self._current_result = result
         try:
             statements = sqlglot.parse(sql, read=self.dialect)
@@ -187,7 +234,9 @@ class SqlParser:
             return
         self._extract_ctes(stmt)
         prev_sources = getattr(self, "_current_source_tables", []).copy()
+        prev_all = getattr(self, "_current_all_sources", []).copy()
         self._current_source_tables = []
+        self._current_all_sources = []
         for table in stmt.find_all(exp.Table):
             tname = _table_to_name(table)
             alias = table.alias_or_name
@@ -200,10 +249,14 @@ class SqlParser:
                 result.source_tables.append({"name": tname, "alias": alias, "is_cte": is_cte})
                 if not is_cte:
                     self._current_source_tables.append(tname)
+            # 解析用的候选源表包含 CTE，保证从 CTE 读取的裸列能绑定到 CTE
+            if tname not in self._current_all_sources:
+                self._current_all_sources.append(tname)
         for union in stmt.find_all(exp.Union):
             pass
         self._parse_columns(stmt, result, cte_name)
         self._current_source_tables = prev_sources
+        self._current_all_sources = prev_all
 
     def _parse_columns(self, stmt: exp.Select, result: SqlParseResult, cte_name: str | None = None) -> None:
         """解析输出字段及其来源
@@ -214,24 +267,49 @@ class SqlParser:
             cte_name: 当前是否在解析 CTE 内部
         """
         selects = stmt.expressions
+        resolver = ColumnResolver(
+            source_tables=self._current_source_tables,
+            alias_map=self._cte_aliases,
+            schema_registry=self.schema_registry,
+            all_sources=getattr(self, "_current_all_sources", None),
+        )
         for sel_expr in selects:
             if isinstance(sel_expr, exp.Star):
                 continue
             col_name = sel_expr.alias_or_name
             if not col_name:
                 continue
+            inner = sel_expr.unalias() if hasattr(sel_expr, "unalias") else sel_expr
             transform = self._analyze_expression(sel_expr)
             source_cols = self._extract_source_columns(sel_expr)
             target_table = cte_name
             if target_table is None and result.target_tables:
                 target_table = result.target_tables[-1]["name"]
-            result.columns.append({
+
+            col_entry = {
                 "name": col_name,
                 "table": target_table,
+                # 兼容旧字段：parser 单测仍读取 transform_type/transform_expr/source_columns
                 "transform_expr": transform["expression"],
                 "transform_type": transform["type"],
                 "source_columns": source_cols,
-            })
+                # 表达式 DAG 字段
+                "passthrough": False,
+                "physical_column": None,
+                "expr_root": None,
+                "expr_nodes": {},
+            }
+
+            if expr_dag.is_passthrough(inner):
+                # 纯透传列：不建表达式节点，直接记录物理列
+                col_entry["passthrough"] = True
+                col_entry["physical_column"] = resolver.resolve(inner)
+            else:
+                root_fp, nodes = expr_dag.decompose(inner, resolver.resolve, dialect=self.dialect or None)
+                col_entry["expr_root"] = root_fp
+                col_entry["expr_nodes"] = nodes
+
+            result.columns.append(col_entry)
 
     def _analyze_expression(self, expr) -> dict:
         """分析表达式类型

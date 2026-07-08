@@ -89,10 +89,17 @@ class ColumnNode(BaseNode):
 
 @dataclass
 class TransformNode(BaseNode):
-    """字段计算表达式节点"""
+    """字段计算表达式节点（表达式 Merkle DAG 中的一个逻辑节点）
+
+    在表达式 DAG 模型中，一个节点代表一段计算逻辑（如 SUM(x)、a/b、ROUND(...)）。
+    节点身份由 fingerprint（内容指纹）决定：相同逻辑收敛为同一节点。
+    op 为算子/函数标签（如 sum/div/round/case/window），叶子列/字面量为空。
+    """
     name: str = ""
     expression: str = ""
     expression_type: ExpressionType = ExpressionType.FUNCTION
+    fingerprint: str = ""
+    op: str = ""
 
     def __post_init__(self):
         self.node_type = NodeType.TRANSFORM
@@ -103,3 +110,7 @@ class TransformNode(BaseNode):
         d = super().to_dict()
         d["expression_type"] = self.expression_type.value
         return d
+
+
+# 语义别名：在表达式 DAG 语境下，Transform 节点即"表达式节点"
+ExpressionNode = TransformNode

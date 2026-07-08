@@ -42,6 +42,7 @@ EDGE_COLORS = {
     "table_lineage": "#66bb6a",
     "produces": "#ab47bc",
     "compute_dependency": "#ffa726",
+    "expr_operand": "#8d6e63",
     "has_column": "#b0bec5",
     "contains": "#26c6da",
 }

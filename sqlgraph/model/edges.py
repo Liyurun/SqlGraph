@@ -11,6 +11,7 @@ class EdgeType(str, Enum):
     TABLE_LINEAGE = "table_lineage"
     PRODUCES = "produces"
     COMPUTE_DEPENDENCY = "compute_dependency"
+    EXPR_OPERAND = "expr_operand"
     HAS_COLUMN = "has_column"
     CONTAINS = "contains"
 

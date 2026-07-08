@@ -32,8 +32,15 @@ ENV/
 *.swo
 *~
 .DS_Store
+
+# Editor / IDE agent workspaces
+.trae/
 .superpowers/
+
+# Generated visualization output
+demo_output/
 *.html
+!examples/**/*.html
 output/
 output_csv/
 sqlgraph_output/

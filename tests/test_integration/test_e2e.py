@@ -20,12 +20,12 @@ def test_demo_end_to_end():
         pytest.skip("Demo directory not found")
     graph = build_graph(DEMO_DIR, dialect='spark', schema_path=schema_path)
     stats = graph.stats()
-    assert stats['sql_count'] == 6
-    assert stats['table_count'] >= 10
-    assert stats['column_count'] >= 50
+    assert stats['sql_count'] == 11
+    assert stats['table_count'] >= 20
+    assert stats['column_count'] >= 100
     assert stats['transform_count'] >= 30
-    assert stats['edge_count'] >= 200
-    assert stats['node_count'] >= 100
+    assert stats['edge_count'] >= 300
+    assert stats['node_count'] >= 150
     assert len(graph.get_upstream('dws_ad_daily') or graph.get_upstream('stg_impressions') or []) >= 0
 
 

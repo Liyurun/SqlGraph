@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 class SqlGraphError(Exception):
-    """sqlGraph 基础异常类"""
+    """SqlGraph 基础异常类"""
     pass
 
 

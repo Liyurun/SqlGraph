@@ -289,7 +289,7 @@ def demo(
         view="table",
         theme=theme,
         schema=schema_path,
-        title="广告素材血缘图 - Ads Pipeline Lineage",
+        title="SqlGraph",
         open_browser=True,
     )
 

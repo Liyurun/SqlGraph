@@ -13,9 +13,8 @@ Cytoscape.js 知识图谱风格交互式 HTML 可视化生成模块。
 from __future__ import annotations
 import os
 import json
-import math
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from sqlgraph.model import PropertyGraph, NodeType, EdgeType, SqlNode, TableNode, ColumnNode, TransformNode
+from sqlgraph.model import PropertyGraph, EdgeType
 from sqlgraph.visualize.colors import NODE_COLORS, EDGE_COLORS, DARK_THEME, LIGHT_THEME
 from sqlgraph.utils.logging import log_info
 from sqlgraph.utils.notebook import is_notebook_env, display_html_in_notebook
@@ -37,53 +36,47 @@ def _compute_degrees(elements: list) -> dict:
 
 
 def _node_size(degree: int, ntype: str, is_target: bool) -> int:
-    """根据节点度数和类型计算节点大小（像素）"""
-    base = {"sql": 28, "table": 30, "column": 10, "transform": 16}
-    size = base.get(ntype, 20)
-    size += min(degree * 3, 30)
+    """
+    根据节点度数和类型计算节点直径（像素）。
+
+    分层布局下节点间距充裕，可以适当放大，让节点更醒目、
+    标签更易读。核心枢纽（高度数）与终端产出表进一步突出。
+    """
+    base = {"sql": 22, "table": 26, "column": 10, "transform": 14}
+    size = base.get(ntype, 22)
+    # 度数越高节点越大，但设上限避免枢纽过分抢眼
+    size += min(degree * 3, 22)
     if is_target:
-        size += 15
-    if ntype == "table" and is_target:
-        size = max(size, 52)
-    if ntype == "table" and degree > 3:
-        size = max(size, 40)
-    return size
+        size += 6
+    if ntype == "table":
+        size = max(size, 26)
+    return int(size)
 
 
 def _font_size(node_size: int) -> int:
-    """根据节点大小计算标签字号"""
-    if node_size >= 48:
+    """
+    根据节点大小计算标签字号。
+
+    字号封顶在 12px，避免缩放时标签过大互相碾压；
+    小节点使用较小字号保持整洁。
+    """
+    if node_size >= 40:
+        return 12
+    if node_size >= 30:
         return 11
-    if node_size >= 36:
+    if node_size >= 22:
         return 10
-    if node_size >= 24:
-        return 9
-    if node_size >= 16:
-        return 8
-    return 0
-
-
-def _short_label(name: str, ntype: str, size: int) -> str:
-    """根据节点大小智能截断标签（标签在节点外部，可以显示更多）"""
-    if size <= 14:
-        return ""
-    max_chars = {16: 5, 22: 7, 28: 10, 36: 14, 44: 18, 52: 24, 60: 30}
-    limit = 10
-    for s, c in sorted(max_chars.items()):
-        if size <= s:
-            limit = c
-            break
-    if len(name) > limit and limit > 0:
-        return name[:limit - 1] + "…"
-    return name if limit > 0 else ""
+    return 9
 
 
 def _prepare_elements(graph: PropertyGraph, view: str = "table") -> list:
     """
     将 PropertyGraph 转换为 Cytoscape.js elements 格式。
 
-    节点大小根据连接度数动态计算，边使用半透明弧线样式，
-    目标表节点额外增大突出显示。
+    - 节点大小根据连接度数动态计算，核心目标表突出
+    - 始终输出完整节点和边，前端再按视图模式过滤显示
+    - 边使用半透明贝塞尔曲线，弧线自然不杂乱
+    - 标签完整显示不截断
     """
     target_tables = set()
     source_tables = set()
@@ -92,25 +85,21 @@ def _prepare_elements(graph: PropertyGraph, view: str = "table") -> list:
             target_tables.add(e.target_id)
         if e.edge_type == EdgeType.READS_FROM:
             source_tables.add(e.target_id)
+    # 终端产出表：被写入但从不被读取，即血缘链路的最终落地表。
+    # 只强调这类节点，避免像旧版那样给所有目标表都套黄框，视觉更克制。
+    leaf_tables = target_tables - source_tables
 
     raw_nodes = []
     raw_edges = []
     for node in graph.nodes:
         nd = node.to_dict()
         ntype = nd.get("node_type", "unknown")
-        skip = False
-        if view == "table" and ntype in ("column", "transform"):
-            skip = True
-        elif view == "sql" and ntype != "sql":
-            skip = True
-        elif view == "lineage" and ntype in ("column", "transform"):
-            skip = True
-        if skip:
-            continue
         colors = NODE_COLORS.get(ntype, NODE_COLORS["table"])
         label = nd.get("name", nd["id"])
         is_target = nd["id"] in target_tables
         is_source = nd["id"] in source_tables and not is_target
+        is_leaf = nd["id"] in leaf_tables
+        is_cte = nd.get("is_cte", False)
         raw_nodes.append({
             "data": {
                 "id": nd["id"],
@@ -121,14 +110,18 @@ def _prepare_elements(graph: PropertyGraph, view: str = "table") -> list:
                 "shadow": colors.get("shadow", "rgba(0,0,0,0.2)"),
                 "isTarget": is_target,
                 "isSource": is_source,
-                "isCte": nd.get("is_cte", False),
+                "isLeaf": is_leaf,
+                "isCte": is_cte,
                 "dialect": nd.get("dialect"),
                 "expressionType": nd.get("expression_type"),
                 "expression": nd.get("expression"),
+                "op": nd.get("op"),
+                "fingerprint": nd.get("fingerprint"),
                 "fullName": label,
                 "degree": 0,
             }
         })
+
     valid_ids = {el["data"]["id"] for el in raw_nodes}
     for edge in graph.edges:
         if edge.source_id not in valid_ids or edge.target_id not in valid_ids:
@@ -136,8 +129,6 @@ def _prepare_elements(graph: PropertyGraph, view: str = "table") -> list:
         ed = edge.to_dict()
         etype = ed.get("type", "unknown")
         color = EDGE_COLORS.get(etype, "#bdbdbd")
-        if view == "table" and etype in ("has_column", "contains", "produces", "compute_dependency"):
-            continue
         opacity = 0.35 if etype in ("has_column", "contains") else 0.45
         width = 1.5 if etype in ("table_lineage", "writes_to") else 1.0
         raw_edges.append({
@@ -151,18 +142,38 @@ def _prepare_elements(graph: PropertyGraph, view: str = "table") -> list:
                 "width": width,
             }
         })
+
     all_elements = raw_nodes + raw_edges
     degrees = _compute_degrees(all_elements)
+
+    connected_ids = set()
+    for el in raw_edges:
+        connected_ids.add(el["data"]["source"])
+        connected_ids.add(el["data"]["target"])
+
+    filtered_nodes = []
     for el in raw_nodes:
         d = degrees.get(el["data"]["id"], 0)
+        ntype = el["data"]["nodeType"]
+        is_cte = el["data"]["isCte"]
+        is_target = el["data"]["isTarget"]
+
+        if d == 0:
+            if ntype == "sql":
+                pass
+            elif is_cte and not is_target:
+                continue
+            else:
+                continue
+
         el["data"]["degree"] = d
-        size = _node_size(d, el["data"]["nodeType"], el["data"]["isTarget"])
+        size = _node_size(d, ntype, is_target)
         el["data"]["size"] = size
         el["data"]["fontSize"] = _font_size(size)
-        el["data"]["label"] = _short_label(el["data"]["label"], el["data"]["nodeType"], size)
-        if el["data"]["nodeType"] == "table":
-            el["data"]["label"] = el["data"]["fullName"] if size >= 24 else _short_label(el["data"]["fullName"], "table", size)
-    return raw_nodes + raw_edges
+        el["data"]["label"] = el["data"]["fullName"]
+        filtered_nodes.append(el)
+
+    return filtered_nodes + raw_edges
 
 
 def to_html(
@@ -170,7 +181,7 @@ def to_html(
     output_path: str = "lineage.html",
     view: str = "table",
     theme: str = "light",
-    title: str = "SQL Lineage",
+    title: str = "SqlGraph",
     auto_open: bool = False,
 ) -> str:
     """生成知识图谱风格的自包含交互式 HTML 文件"""
@@ -208,7 +219,7 @@ def to_notebook(
     graph: PropertyGraph,
     view: str = "table",
     theme: str = "light",
-    title: str = "SQL Lineage",
+    title: str = "SqlGraph",
 ) -> None:
     """在 Jupyter Notebook 中内嵌展示交互式血缘图"""
     from sqlgraph.utils.notebook import display_html_in_notebook

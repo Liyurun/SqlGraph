@@ -10,10 +10,14 @@ from sqlgraph.visualize import to_html
 
 
 def _build_graph():
-    """构建一个简单的两级 SQL 血缘图用于测试：raw -> mid -> final"""
+    """构建一个含加工逻辑的两级 SQL 血缘图：raw -> mid -> final
+
+    mid 层带聚合表达式，保证图中存在 transform（表达式）节点，
+    用于验证 HTML 中保留字段/转换节点。
+    """
     builder = GraphBuilder(dialect="spark")
-    sql1 = "INSERT OVERWRITE TABLE mid SELECT id, name FROM raw"
-    sql2 = "INSERT OVERWRITE TABLE final SELECT id, name FROM mid"
+    sql1 = "INSERT OVERWRITE TABLE mid SELECT id, COUNT(*) AS cnt FROM raw GROUP BY id"
+    sql2 = "INSERT OVERWRITE TABLE final SELECT id, cnt FROM mid"
     from sqlgraph.input import SqlSource
 
     src = SqlSource.from_string(sql1, name="etl1")
@@ -32,3 +36,6 @@ def test_to_html_generates_file():
             content = f.read()
         assert "cytoscape" in content.lower()
         assert "Test" in content
+        # 默认表级视图只是在前端过滤显示，HTML 内仍保留字段/转换节点，
+        # 这样用户无需重新生成文件即可切换到“字段级详情”查看加工逻辑。
+        assert '"nodeType": "transform"' in content

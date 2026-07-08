@@ -5,7 +5,7 @@ from sqlgraph.model.edges import Edge, EdgeType
 
 
 class PropertyGraph:
-    """属性图 - sqlGraph 的核心数据模型"""
+    """属性图 - SqlGraph 的核心数据模型"""
 
     def __init__(self):
         self._nodes: dict = {}

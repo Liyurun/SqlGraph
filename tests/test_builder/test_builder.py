@@ -56,3 +56,67 @@ def test_build_with_case_when():
     graph = builder.build_from_sql(sql, name="case_test")
     stats = graph.stats()
     assert stats["transform_count"] >= 1
+
+
+def _expr_ids(graph):
+    return [n.id for n in graph.nodes if n.node_type.value == "transform"]
+
+
+def test_expr_dag_dedup_same_file():
+    """同文件内相同的整条表达式复用同一节点"""
+    builder = GraphBuilder(dialect="spark")
+    sql = """
+    INSERT OVERWRITE TABLE agg
+    SELECT
+        ad_id,
+        ROUND(SUM(is_click) * 100.0 / COUNT(*), 4) AS ctr,
+        ROUND(SUM(is_click) * 100.0 / COUNT(*), 4) AS ctr2
+    FROM dwd_ad_event
+    GROUP BY ad_id
+    """
+    graph = builder.build_from_sql(sql, name="dedup")
+    expr_nodes = [n for n in graph.nodes if n.node_type.value == "transform"]
+    # 两个字段用的是同一条表达式，应收敛为一个节点
+    assert len(expr_nodes) == 1
+
+
+def test_composite_expression_single_node():
+    """复合表达式整体作为一个节点，不再拆成子表达式"""
+    builder = GraphBuilder(dialect="spark")
+    graph = builder.build_from_sql(
+        "INSERT OVERWRITE TABLE t SELECT ROUND(SUM(x) / COUNT(*), 4) AS r FROM e", name="single")
+    expr_nodes = [n for n in graph.nodes if n.node_type.value == "transform"]
+    assert len(expr_nodes) == 1
+    # 不应再产生表达式内部的操作数边
+    assert len(graph.get_edges_by_type(EdgeType.EXPR_OPERAND)) == 0
+    # 表达式引用的物理列产生计算依赖边（x 一个来源列）
+    assert len(graph.get_edges_by_type(EdgeType.COMPUTE_DEPENDENCY)) >= 1
+
+
+def test_expr_dag_shared_across_sql():
+    """跨 SQL 相同逻辑（SUM(dwd.is_click)）复用同一节点 id"""
+    b1 = GraphBuilder(dialect="spark")
+    g1 = b1.build_from_sql(
+        "INSERT OVERWRITE TABLE a SELECT SUM(is_click) AS c FROM dwd_ad_event", name="s1")
+    b2 = GraphBuilder(dialect="spark")
+    g2 = b2.build_from_sql(
+        "INSERT OVERWRITE TABLE b SELECT SUM(is_click) AS c FROM dwd_ad_event", name="s2")
+    sum1 = [n.id for n in g1.nodes if n.node_type.value == "transform" and n.op == "sum"]
+    sum2 = [n.id for n in g2.nodes if n.node_type.value == "transform" and n.op == "sum"]
+    assert sum1 and sum1 == sum2
+
+
+def test_expr_dag_distinct_physical_columns():
+    """不同物理列来源的相同算子是不同节点"""
+    builder = GraphBuilder(dialect="spark")
+    sql = """
+    INSERT OVERWRITE TABLE t
+    SELECT
+        TRY_CAST(impression.ad_id AS BIGINT) AS x,
+        TRY_CAST(click.ad_id AS BIGINT) AS y
+    FROM impression JOIN click ON impression.id = click.id
+    """
+    graph = builder.build_from_sql(sql, name="distinct")
+    cast_nodes = [n for n in graph.nodes
+                  if n.node_type.value == "transform" and n.op in ("trycast", "cast")]
+    assert len(cast_nodes) == 2
