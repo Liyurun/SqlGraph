@@ -7,6 +7,9 @@ license = "Apache-2.0"
 readme = "README.md"
 packages = [{include = "sqlgraph"}]
 
+[tool.poetry.scripts]
+sqlgraph = "sqlgraph.cli:main"
+
 [tool.poetry.dependencies]
 python = "^3.9"
 sqlglot = ">=25.0.0"

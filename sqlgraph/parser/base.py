@@ -262,8 +262,8 @@ class SqlParser:
             return {"expression": inner.sql(), "type": "column_ref"}
         if isinstance(inner, exp.Literal):
             return {"expression": inner.sql(), "type": "literal"}
-        if isinstance(inner, exp.NullIf):
-            return {"expression": expr_str, "type": "coalesce"}
+        if isinstance(inner, exp.Nullif):
+            return {"expression": expr_str, "type": "arithmetic"}
         if isinstance(inner, exp.Anonymous):
             return {"expression": expr_str, "type": "function"}
         for child in inner.find_all(exp.Column):
