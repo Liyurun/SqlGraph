@@ -9,9 +9,10 @@
 **A SQL-to-Knowledge-Graph engine for modern data warehouses.**
 
 SqlGraph turns scattered warehouse SQL into an interactive knowledge graph of
-tables, columns, and reusable transformation logic. It goes beyond traditional
-lineage tools: every SQL expression is fingerprinted, so the same business logic
-across different pipelines collapses into one shared node.
+tables, columns, SQL statements, and reusable transformation logic. It goes
+beyond traditional lineage tools: every SQL expression is fingerprinted and
+merged only when the output field semantics match, so reused business logic is
+visible without collapsing distinct metric aliases.
 
 Use SqlGraph to discover duplicated metrics, audit transformation logic, explain
 data flows, and turn your SQL assets into graph-ready knowledge for GraphRAG.
@@ -47,9 +48,10 @@ nodes instead of treating SQL as opaque text.
   nodes.
 
 - **Reusable business logic detection**:
-  Identical expressions across SQL files share the same 128-bit content
-  fingerprint. Commutative operators are normalized, so `a + b` and `b + a`
-  converge.
+  Identical expressions share a 128-bit content fingerprint, and Transform nodes
+  merge by `expression fingerprint + output field name`. This keeps
+  `SUM(clicks) AS clicks` and `SUM(clicks) AS total_clicks` distinct while
+  still collapsing repeated definitions of the same output field.
 
 - **Column-accurate dependencies**:
   Each transformation node is linked to the exact physical columns it reads and
@@ -57,8 +59,9 @@ nodes instead of treating SQL as opaque text.
   stay distinct.
 
 - **Beautiful interactive visualization**:
-  Cytoscape.js + ELK layered layout, dark mode, search, large-graph truncation,
-  node-size controls, and PNG/SVG export.
+  Cytoscape.js layered layouts, dark mode, search, large-graph truncation,
+  node-size controls, PNG/SVG export, and a local SQL Playground for instant
+  parsing and graph exploration.
 
 - **Graph-ready outputs**:
   Export to HTML, CSV, JSON, GraphRAG payloads, and NetworkX for downstream
@@ -70,7 +73,7 @@ nodes instead of treating SQL as opaque text.
 |---|---|
 | **SQL dialects** | Spark / Hive / Presto / BigQuery / MySQL / Postgres and more, powered by [SQLGlot](https://github.com/tobymao/sqlglot) |
 | **SQL constructs** | CTEs, sub-queries, `UNION ALL`, `JOIN`s, window functions, `CASE WHEN`, `CAST`, aggregates |
-| **Logic identity** | 128-bit expression fingerprints and 96-bit table/column IDs for deterministic large-scale graphs |
+| **Logic identity** | 128-bit expression fingerprints, output-aware Transform merging, and 96-bit table/column IDs for deterministic large-scale graphs |
 | **Visualization scale** | Large graphs render the top-1000 nodes first and load more through search |
 | **Developer UX** | Simple Python API, Typer CLI, reusable examples, and CI-backed tests |
 
@@ -117,6 +120,12 @@ sqlgraph demo
 sqlgraph build ./sql --dialect spark --schema ./schema.csv \
   --format html,csv,json -o ./output
 
+# Build from a table_name/code CSV sample
+sqlgraph build examples/df_sample.csv --dialect spark --format html,json
+
+# Start a local SQL Playground
+sqlgraph playground
+
 # Just print stats, no files written
 sqlgraph stats ./sql --dialect spark
 ```
@@ -158,9 +167,9 @@ Switch the view mode to **字段级详情 / column-level** to explore the full e
               (source)  (SQLGlot)   (fusion)  (PropertyGraph)   (HTML/CSV/JSON…)
 ```
 
-1. **Input** — discover SQL from files, directories, strings, or DataFrames; optionally load a `schema.csv` for column disambiguation.
+1. **Input** — discover SQL from files, directories, strings, or `table_name,code` CSV files; optionally load a `schema.csv` for column disambiguation.
 2. **Parser** — SQLGlot builds the AST; a `ColumnResolver` binds every column to a physical `table.column`. The [expression DAG module](sqlgraph/parser/expr_dag.py) turns each output expression into a fingerprinted logic node.
-3. **Builder** — the [graph builder](sqlgraph/builder/graph_builder.py) materializes tables, columns and transformation nodes, deduplicates shared logic, and fuses cross-SQL table lineage.
+3. **Builder** — the [graph builder](sqlgraph/builder/graph_builder.py) materializes tables, columns and transformation nodes, deduplicates shared logic by fingerprint plus output field name, and fuses cross-SQL table lineage.
 4. **Model** — an in-memory `PropertyGraph` of typed nodes (SQL / Table / Column / Transform) and edges (`reads_from`, `writes_to`, `contains`, `compute_dependency`, `produces`, `table_lineage`, `has_column`).
 5. **Serialize / Visualize** — export to CSV, GraphRAG JSON, plain JSON, NetworkX, or an interactive Cytoscape.js HTML page.
 
@@ -175,10 +184,12 @@ sqlgraph/
 ├── builder/     # PropertyGraph construction & cross-SQL lineage fusion
 ├── model/       # nodes, edges, PropertyGraph
 ├── serialize/   # csv / graphrag / json / networkx exporters
-├── visualize/   # Cytoscape.js HTML renderer (ELK layout, themes)
+├── visualize/   # Cytoscape.js HTML renderer (layered layout, themes)
 ├── api.py       # build_graph() high-level entry
-└── cli.py       # Typer CLI (build / stats / demo)
+├── cli.py       # Typer CLI (build / stats / playground / demo)
+└── playground.py # local browser playground for ad-hoc SQL exploration
 examples/ads_pipeline/   # 11-file AdTech demo + schema.csv
+examples/df_sample.csv   # small table_name/code CSV sample
 tests/                   # unit + integration tests
 ```
 

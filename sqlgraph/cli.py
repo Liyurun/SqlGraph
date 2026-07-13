@@ -2,9 +2,10 @@
 """
 SQLGraph 命令行接口（CLI）模块。
 
-基于 Typer 框架实现，提供三个主要子命令：
+基于 Typer 框架实现，提供四个主要子命令：
   - build: 构建 SQL 血缘图并输出指定格式（CSV/GraphRAG/HTML/JSON）
   - stats: 仅解析 SQL 并输出统计信息，不生成输出文件
+  - playground: 启动本地页面，输入 SQL 后即时生成图谱
   - demo: 运行内置示例（广告素材管道）并自动打开浏览器
 
 使用 Rich 库提供美观的终端输出，包括进度条、彩色表格和状态提示。
@@ -13,6 +14,7 @@ SQLGraph 命令行接口（CLI）模块。
   python3 -m sqlgraph.cli --help
   python3 -m sqlgraph.cli build ./sql_files -o ./output --format html,csv
   python3 -m sqlgraph.cli stats ./sql_files
+  python3 -m sqlgraph.cli playground
   python3 -m sqlgraph.cli demo
 """
 from __future__ import annotations
@@ -32,6 +34,7 @@ from sqlgraph.visualize import to_html as vis_to_html
 from sqlgraph.input.csv_schema import SchemaRegistry
 from sqlgraph.utils.notebook import setup_notebook
 from sqlgraph.utils.logging import log_info
+from sqlgraph.playground import serve_playground
 
 # 创建 Typer 应用实例，设置名称和帮助描述
 app = typer.Typer(
@@ -48,8 +51,8 @@ console = Console()
 def build(
     input_path: str = typer.Argument(
         ...,
-        help="SQL 文件或目录路径。支持单个 .sql 文件、包含 SQL 文件的目录、"
-             "或直接传入 SQL 字符串（自动识别）。",
+        help="SQL 文件、目录或 df.csv 路径。支持单个 .sql 文件、包含 SQL 文件的目录、"
+             "table_name/code 格式的 df.csv，或直接传入 SQL 字符串（自动识别）。",
     ),
     output: str = typer.Option(
         "./sqlgraph_output",
@@ -112,6 +115,9 @@ def build(
 
         # 指定 Spark SQL 方言和 Schema 文件
         sqlgraph build ./sql_queries --dialect spark --schema ./schema.csv
+
+        # 从 table_name/code 格式的 df.csv 构建
+        sqlgraph build ./examples/df.csv --dialect spark --format csv,json
     """
     # 初始化 Notebook 环境兼容性
     setup_notebook()
@@ -231,6 +237,28 @@ def stats(
     for k, v in s.items():
         table.add_row(str(k), str(v))
     console.print(table)
+
+
+@app.command()
+def playground(
+    host: str = typer.Option(
+        "127.0.0.1",
+        "--host",
+        help="Playground 服务监听地址。",
+    ),
+    port: int = typer.Option(
+        8765,
+        "--port",
+        help="Playground 服务端口。传 0 时自动寻找可用端口。",
+    ),
+    open_browser: bool = typer.Option(
+        True,
+        "--open/--no-open",
+        help="启动后是否自动打开浏览器。",
+    ),
+):
+    """启动本地 SQL Playground，可在页面中输入 SQL 并即时生成图谱"""
+    serve_playground(host=host, port=port, open_browser=open_browser)
 
 
 @app.command()

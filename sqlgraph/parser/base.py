@@ -74,6 +74,7 @@ class SqlParseResult:
         sql_id: SQL 唯一标识
         sql_name: SQL 名称
         sql_content: 原始 SQL 内容
+        file_path: SQL 来源路径
         dialect: SQL 方言
         source_tables: 源表列表，每个元素为 {name, alias, is_cte}
         target_tables: 目标表列表，每个元素为 {name, is_cte}
@@ -87,6 +88,7 @@ class SqlParseResult:
         self.sql_id: str = ""
         self.sql_name: str = ""
         self.sql_content: str = ""
+        self.file_path: str | None = None
         self.dialect: str = ""
         self.source_tables: list[dict] = []
         self.target_tables: list[dict] = []
@@ -131,6 +133,7 @@ class SqlParser:
         result.sql_id = _gen_id("sql")
         result.sql_name = name
         result.sql_content = sql
+        result.file_path = file_path
         result.dialect = self.dialect or ""
         self._cte_aliases = {}
         self._current_source_tables = []

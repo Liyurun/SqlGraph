@@ -36,3 +36,46 @@ def test_from_any_detects_string_as_sql():
     source = SqlSource.from_any("SELECT 1")
     assert len(source) == 1
     assert source[0].source_type == "string"
+
+
+def test_from_df_csv_loads_table_name_code_format():
+    content = (
+        '"table_name","code"\n'
+        '"target","set spark.sql.shuffle.partitions=10;\\n'
+        'INSERT OVERWRITE TABLE target SELECT id FROM source;"\n'
+        '"target_dup","set spark.sql.shuffle.partitions=10;\\n'
+        'INSERT OVERWRITE TABLE target SELECT id FROM source;"\n'
+        '"empty","null"\n'
+    )
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+        f.write(content)
+        f.flush()
+        path = f.name
+    try:
+        source = SqlSource.from_df_csv(path)
+        assert len(source) == 1
+        assert source[0].name == "target"
+        assert source[0].source_type == "df_csv"
+        assert "set spark" not in source[0].content.lower()
+        assert "INSERT OVERWRITE TABLE target" in source[0].content
+        assert source[0].metadata["content_hash"]
+        assert source[0].metadata["source_uri"] == "target.sql"
+    finally:
+        os.unlink(path)
+
+
+def test_from_any_detects_df_csv():
+    content = (
+        '"table_name","code"\n'
+        '"target","INSERT OVERWRITE TABLE target SELECT id FROM source;"\n'
+    )
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+        f.write(content)
+        f.flush()
+        path = f.name
+    try:
+        source = SqlSource.from_any(path)
+        assert len(source) == 1
+        assert source[0].source_type == "df_csv"
+    finally:
+        os.unlink(path)

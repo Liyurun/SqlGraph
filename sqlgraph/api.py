@@ -8,6 +8,7 @@ SQLGraph 高层 Python API 模块。
 支持的输入源类型：
   - SQL 文件路径（单个 .sql 文件）
   - 目录路径（自动扫描目录下所有 .sql 文件）
+  - df.csv 文件（table_name,code 两列，每行一段 SQL 代码）
   - SQL 字符串（直接传入 SQL 文本）
   - 路径列表（多个文件/目录/SQL 字符串的混合列表）
   - SqlSource 对象（已构建好的 SqlSource 实例）
@@ -45,6 +46,7 @@ def build_graph(
     Args:
         source: SQL 输入源，支持以下类型：
             - str: SQL 文件路径、目录路径、或 SQL 字符串（自动识别）
+                   也支持 table_name,code 格式的 df.csv 文件
             - List[str]: 路径或字符串列表，支持混合输入
             - SqlSource: 已构建好的 SqlSource 实例
         dialect: SQL 方言，可选值：spark/hive/presto/bigquery/...

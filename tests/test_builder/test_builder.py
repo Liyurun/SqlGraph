@@ -62,8 +62,8 @@ def _expr_ids(graph):
     return [n.id for n in graph.nodes if n.node_type.value == "transform"]
 
 
-def test_expr_dag_dedup_same_file():
-    """同文件内相同的整条表达式复用同一节点"""
+def test_expr_dag_different_output_fields_not_merged():
+    """相同表达式产出不同字段时，不应误合并 Transform 节点"""
     builder = GraphBuilder(dialect="spark")
     sql = """
     INSERT OVERWRITE TABLE agg
@@ -76,8 +76,29 @@ def test_expr_dag_dedup_same_file():
     """
     graph = builder.build_from_sql(sql, name="dedup")
     expr_nodes = [n for n in graph.nodes if n.node_type.value == "transform"]
-    # 两个字段用的是同一条表达式，应收敛为一个节点
+    assert len(expr_nodes) == 2
+    assert {n.output_name for n in expr_nodes} == {"ctr", "ctr2"}
+    assert len({n.fingerprint for n in expr_nodes}) == 1
+
+
+def test_expr_dag_same_logic_same_output_field_merged_across_sql():
+    """相同表达式产出相同字段时，跨 SQL 自动合并 Transform 节点"""
+    builder = GraphBuilder(dialect="spark")
+    source = SqlSource.from_string(
+        "INSERT OVERWRITE TABLE a SELECT SUM(is_click) AS c FROM dwd_ad_event",
+        name="s1",
+    )
+    source.add_item(SqlSourceItem(
+        name="s2",
+        content="INSERT OVERWRITE TABLE b SELECT SUM(is_click) AS c FROM dwd_ad_event",
+        source_type="string",
+    ))
+    graph = builder.build_from_source(source)
+    expr_nodes = [n for n in graph.nodes if n.node_type.value == "transform" and n.op == "sum"]
     assert len(expr_nodes) == 1
+    assert expr_nodes[0].output_name == "c"
+    produces_edges = graph.get_edges_by_type(EdgeType.PRODUCES)
+    assert sum(1 for e in produces_edges if e.source_id == expr_nodes[0].id) == 2
 
 
 def test_composite_expression_single_node():

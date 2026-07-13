@@ -46,3 +46,7 @@ output_csv/
 sqlgraph_output/
 failed_cases.json
 smoke_result.json
+
+# Large or private local datasets
+examples/df.csv
+examples/test/

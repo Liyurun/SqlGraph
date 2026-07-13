@@ -1,7 +1,10 @@
 # sqlgraph/input/sql_source.py
 from __future__ import annotations
+import csv
+import hashlib
 import os
 import glob
+import sys
 from dataclasses import dataclass, field
 from typing import Iterator
 from sqlgraph.utils.errors import InputError
@@ -21,6 +24,7 @@ class SqlSourceItem:
     content: str
     source_path: str | None = None
     source_type: str = "string"
+    metadata: dict = field(default_factory=dict)
 
 
 class SqlSource:
@@ -56,6 +60,73 @@ class SqlSource:
         source._items.append(SqlSourceItem(
             name=name, content=content, source_path=file_path, source_type="file"
         ))
+        return source
+
+    @classmethod
+    def from_df_csv(
+        cls,
+        file_path: str,
+        table_column: str = "table_name",
+        sql_column: str = "code",
+        encoding: str = "utf-8",
+        deduplicate: bool = True,
+        clean_runtime_statements: bool = True,
+    ) -> "SqlSource":
+        """从 table_name/code 格式的 df.csv 创建 SQL 输入源
+
+        df.csv 是生产任务常见导出格式：每行代表一个任务，table_name 是任务/目标表名，
+        code 是完整 SQL 脚本。这里会跳过空代码、null 代码，并按原始代码内容 hash
+        去重，避免重复任务在图中生成重复 SQL 节点。
+        """
+        if not os.path.isfile(file_path):
+            raise InputError(f"DataFrame CSV file not found: {file_path}")
+
+        source = cls()
+        seen_hashes: set[str] = set()
+        csv.field_size_limit(sys.maxsize)
+
+        with open(file_path, "r", encoding=encoding, newline="") as f:
+            reader = csv.DictReader(f)
+            fields = set(reader.fieldnames or [])
+            if table_column not in fields or sql_column not in fields:
+                raise InputError(
+                    f"df CSV must contain '{table_column}' and '{sql_column}' columns"
+                )
+
+            for row_number, row in enumerate(reader, start=2):
+                raw_sql = row.get(sql_column, "") or ""
+                if not raw_sql.strip() or raw_sql.strip().lower() == "null":
+                    continue
+
+                content_hash = hashlib.sha256(raw_sql.encode("utf-8")).hexdigest()
+                if deduplicate and content_hash in seen_hashes:
+                    continue
+                seen_hashes.add(content_hash)
+
+                sql = (
+                    clean_df_sql(raw_sql)
+                    if clean_runtime_statements
+                    else raw_sql
+                )
+                if not sql.strip():
+                    continue
+
+                table_name = (row.get(table_column, "") or "").strip()
+                name = table_name or f"df_row_{row_number}"
+                source._items.append(SqlSourceItem(
+                    name=name,
+                    content=sql,
+                    source_path=f"{file_path}#{row_number}",
+                    source_type="df_csv",
+                    metadata={
+                        "source_uri": f"{name}.sql",
+                        "content_hash": content_hash,
+                        "raw_content": raw_sql,
+                        "row_number": row_number,
+                        "table_name": table_name,
+                    },
+                ))
+
         return source
 
     @classmethod
@@ -158,6 +229,8 @@ class SqlSource:
             if os.path.isdir(path_or_source):
                 return cls.from_dir(path_or_source)
             elif os.path.isfile(path_or_source):
+                if is_df_csv(path_or_source):
+                    return cls.from_df_csv(path_or_source)
                 return cls.from_file(path_or_source)
             else:
                 return cls.from_string(path_or_source)
@@ -182,3 +255,81 @@ class SqlSource:
     def __getitem__(self, idx):
         """通过索引访问输入项"""
         return self._items[idx]
+
+
+def is_df_csv(file_path: str) -> bool:
+    """判断文件是否为 table_name/code 格式的 df.csv"""
+    if not file_path.lower().endswith(".csv"):
+        return False
+    try:
+        with open(file_path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.reader(f)
+            header = next(reader, [])
+    except Exception:
+        return False
+    normalized = {h.strip().strip("\ufeff") for h in header}
+    return {"table_name", "code"}.issubset(normalized)
+
+
+def clean_df_sql(sql: str) -> str:
+    """清洗 df.csv 中的运行配置语句，保留可解析的业务 SQL"""
+    statements = _split_sql_statements(sql)
+    kept: list[str] = []
+    for stmt in statements:
+        stripped = _strip_leading_sql_comments(stmt).strip()
+        low = stripped.lower()
+        if not stripped or low == "null":
+            continue
+        if low.startswith((
+            "set ", "add ", "use ", "msck ", "repair ", "cache ", "uncache ",
+            "analyze ", "drop partition", "alter table",
+        )):
+            continue
+        if low.startswith("insert overwrite directory"):
+            continue
+        if low.startswith(("import ", "from ", "#!", "# ", "echo ", "python ")):
+            continue
+        kept.append(stmt.strip())
+    return ";\n".join(kept)
+
+
+def _split_sql_statements(sql: str) -> list[str]:
+    """按分号切分 SQL，避免切到单双引号内部的分号"""
+    statements: list[str] = []
+    buf: list[str] = []
+    in_single = False
+    in_double = False
+    prev = ""
+    for ch in sql:
+        if ch == "'" and prev != "\\" and not in_double:
+            in_single = not in_single
+        elif ch == '"' and prev != "\\" and not in_single:
+            in_double = not in_double
+        if ch == ";" and not in_single and not in_double:
+            statements.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+        prev = ch
+    tail = "".join(buf)
+    if tail.strip():
+        statements.append(tail)
+    return statements
+
+
+def _strip_leading_sql_comments(stmt: str) -> str:
+    """去掉语句开头的 SQL 注释，方便判断真实语句类型"""
+    text = stmt.lstrip()
+    changed = True
+    while changed:
+        changed = False
+        if text.startswith("--"):
+            parts = text.split("\n", 1)
+            text = parts[1].lstrip() if len(parts) == 2 else ""
+            changed = True
+        elif text.startswith("/*"):
+            end = text.find("*/")
+            if end >= 0:
+                text = text[end + 2:].lstrip()
+                changed = True
+    return text

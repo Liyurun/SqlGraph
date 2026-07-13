@@ -43,6 +43,11 @@ def _expr_type_from_str(t: str) -> ExpressionType:
     return mapping.get(t, ExpressionType.FUNCTION)
 
 
+def _normalize_output_name(name: str | None) -> str:
+    """输出字段名用于表达式合并 key，按常见 SQL 语义做大小写归一"""
+    return (name or "").strip().strip("`\"").lower()
+
+
 class GraphBuilder:
     """图构建器：从 SQL 解析结果构建 PropertyGraph"""
 
@@ -76,13 +81,29 @@ class GraphBuilder:
         """从 SqlSource 构建完整图"""
         log_info(f"Building graph from {len(source)} SQL source(s)")
         results = []
+        df_failed = 0
+        df_failed_samples = []
         for item in source:
-            parse_result = self.parser.parse(
-                item.content, name=item.name, file_path=item.source_path
-            )
+            try:
+                parse_result = self.parser.parse(
+                    item.content, name=item.name, file_path=item.source_path
+                )
+            except Exception as e:
+                if item.source_type == "df_csv":
+                    df_failed += 1
+                    if len(df_failed_samples) < 5:
+                        df_failed_samples.append(f"{item.name}: {e}")
+                    continue
+                raise
+            self._apply_source_metadata(parse_result, item)
             results.append(parse_result)
-            self._add_parse_result(parse_result)
+            self._add_parse_result(parse_result, item)
         self._link_cross_sql_lineage()
+        if df_failed:
+            log_warn(
+                f"Skipped {df_failed} df_csv SQL item(s) due to parse errors. "
+                f"Samples: {' | '.join(df_failed_samples)}"
+            )
         log_info(f"Graph built: {self.graph.stats()}")
         return self.graph
 
@@ -93,16 +114,30 @@ class GraphBuilder:
         self._link_cross_sql_lineage()
         return self.graph
 
-    def _add_parse_result(self, result: SqlParseResult) -> None:
+    def _apply_source_metadata(self, result: SqlParseResult, item) -> None:
+        """把输入源元数据应用到解析结果，支持 df.csv 稳定复现"""
+        meta = getattr(item, "metadata", {}) or {}
+        content_hash = meta.get("content_hash")
+        if content_hash:
+            result.sql_id = f"sql_{content_hash[:12]}"
+        raw_content = meta.get("raw_content")
+        if raw_content:
+            result.sql_content = raw_content
+
+    def _add_parse_result(self, result: SqlParseResult, item=None) -> None:
         """将单个 SQL 的解析结果添加到图中"""
         self._current_ctes = result.cte_tables
+        meta = getattr(item, "metadata", {}) if item else {}
 
         sql_node = SqlNode(
             id=result.sql_id,
             name=result.sql_name,
-            file_path=None,
+            file_path=result.file_path,
             sql_content=result.sql_content,
             dialect=result.dialect,
+            source_uri=meta.get("source_uri"),
+            content_hash=meta.get("content_hash"),
+            source_type=getattr(item, "source_type", None) if item else None,
         )
         self.graph.add_node(sql_node)
 
@@ -189,22 +224,26 @@ class GraphBuilder:
             table_id = self._ensure_table_node(table_name, is_cte=table_name in cte_names)
         return self._ensure_column_node(table_id, col_name)
 
-    def _ensure_expr_node(self, info: dict) -> str:
-        """确保表达式节点存在，按 fingerprint 去重复用，返回节点 id"""
+    def _ensure_expr_node(self, info: dict, output_name: str) -> str:
+        """确保表达式节点存在，按 逻辑指纹+输出字段名 去重复用，返回节点 id"""
         fp = info["fingerprint"]
-        if fp in self._expr_nodes:
-            return fp
+        normalized_output = _normalize_output_name(output_name)
+        merge_key = f"{fp}::{normalized_output}"
+        if merge_key in self._expr_nodes:
+            return self._expr_nodes[merge_key]
+        node_id = _det_id("expr", merge_key)
         node = TransformNode(
-            id=fp,
+            id=node_id,
             name=info.get("expression", "") or fp,
             expression=info.get("expression", ""),
             expression_type=_expr_type_from_str(info.get("expr_type", "function")),
             fingerprint=fp,
             op=info.get("op", ""),
+            output_name=output_name,
         )
         self.graph.add_node(node)
-        self._expr_nodes[fp] = node.id
-        return fp
+        self._expr_nodes[merge_key] = node.id
+        return node_id
 
     def _add_column_dependency(self, sql_id: str, col_info: dict) -> None:
         """把一个输出字段的加工逻辑接入图。
@@ -238,21 +277,22 @@ class GraphBuilder:
         if not expr_nodes or not root_fp:
             return
 
-        # 整条表达式对应唯一一个节点
+        # 整条表达式 + 输出字段名 对应唯一一个节点。
+        # 同逻辑同字段收敛；同逻辑不同字段保留独立节点，避免误合并别名语义。
         info = expr_nodes[root_fp]
-        self._ensure_expr_node(info)
+        expr_node_id = self._ensure_expr_node(info, col_name)
 
         # SQL -> 表达式 包含边
-        self._add_edge_dedup(sql_id, root_fp, EdgeType.CONTAINS)
+        self._add_edge_dedup(sql_id, expr_node_id, EdgeType.CONTAINS)
         # 表达式引用的每个物理列 -> 表达式 计算依赖边
         for phys_col in info.get("source_columns", []):
             src_col_id = self._ensure_physical_column(phys_col)
             if src_col_id:
-                self._add_edge_dedup(src_col_id, root_fp, EdgeType.COMPUTE_DEPENDENCY)
+                self._add_edge_dedup(src_col_id, expr_node_id, EdgeType.COMPUTE_DEPENDENCY)
 
         # 表达式 -> 输出列
         for out_col_id in out_col_ids:
-            self._add_edge_dedup(root_fp, out_col_id, EdgeType.PRODUCES)
+            self._add_edge_dedup(expr_node_id, out_col_id, EdgeType.PRODUCES)
 
     def _link_cross_sql_lineage(self) -> None:
         """建立跨 SQL 的表级血缘边 (src_table -> dst_table)"""

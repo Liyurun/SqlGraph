@@ -11,8 +11,8 @@ clean boundary, so you can swap or extend any layer independently.
 ## 1. Input (`sqlgraph/input`)
 
 - **`SqlSource`** discovers SQL from a single file, a directory of `.sql` files,
-  a raw SQL string, a list of any of those, or a pandas DataFrame. `from_any()`
-  auto-detects the input type.
+  a raw SQL string, a list of any of those, or a `table_name,code` CSV export.
+  `from_any()` auto-detects the input type.
 - **`SchemaRegistry`** loads an optional `schema.csv`
   (`table_name,column_name,data_type[,description]`). Schema information lets the
   parser resolve ambiguous columns to the correct physical table.
@@ -35,16 +35,19 @@ clean boundary, so you can swap or extend any layer independently.
   - the canonical SQL string is hashed (SHA1, 128-bit) into the fingerprint;
   - every physical column the expression reads is recorded as a dependency.
 
-  This is what makes identical logic across different SQL files collapse onto one
-  node. A whole composite expression such as `ROUND(SUM(clicks)/COUNT(*), 4)` is
-  **one** node — it is not decomposed into sub-nodes.
+  This fingerprint identifies identical logic across different SQL files. The
+  builder combines it with the output field name to decide Transform identity, so
+  identical logic only collapses when it produces the same downstream field. A
+  whole composite expression such as `ROUND(SUM(clicks)/COUNT(*), 4)` is **one**
+  node — it is not decomposed into sub-nodes.
 
 ## 3. Builder (`sqlgraph/builder`)
 
 - **`GraphBuilder`** materializes the graph from parse results:
   - tables and columns get **deterministic IDs** (96-bit SHA1 of their content
     key) so the same entity is stable across files and runs;
-  - transformation nodes are deduplicated by fingerprint (`_ensure_expr_node`);
+  - transformation nodes are deduplicated by `expression fingerprint + output
+    field name` (`_ensure_expr_node`);
   - for each output column it adds `contains` (SQL→expr),
     `compute_dependency` (physical col→expr) and `produces` (expr→output col)
     edges; passthrough columns get a direct `compute_dependency` col→col edge.
@@ -76,8 +79,8 @@ An in-memory **`PropertyGraph`** of typed nodes and edges.
 
 - **`serialize`** exports the graph to CSV (`nodes.csv` / `edges.csv`),
   GraphRAG-schema JSON, plain JSON, or a NetworkX `DiGraph`.
-- **`visualize.to_html`** renders an interactive Cytoscape.js page: ELK layered
-  layout (with Dagre fallback), light/dark themes, node-type filters,
+- **`visualize.to_html`** renders an interactive Cytoscape.js page: layered
+  layouts, light/dark themes, node-type filters,
   view modes (table / lineage / column), search, node-size control and PNG/SVG
   export. Large graphs render the top-1000 nodes by degree first and load more
   on search.

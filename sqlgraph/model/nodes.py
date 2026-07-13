@@ -48,6 +48,9 @@ class SqlNode(BaseNode):
     sql_content: str | None = None
     dialect: str | None = None
     created_at: str | None = None
+    source_uri: str | None = None
+    content_hash: str | None = None
+    source_type: str | None = None
 
     def __post_init__(self):
         self.node_type = NodeType.SQL
@@ -92,7 +95,8 @@ class TransformNode(BaseNode):
     """字段计算表达式节点（表达式 Merkle DAG 中的一个逻辑节点）
 
     在表达式 DAG 模型中，一个节点代表一段计算逻辑（如 SUM(x)、a/b、ROUND(...)）。
-    节点身份由 fingerprint（内容指纹）决定：相同逻辑收敛为同一节点。
+    fingerprint 表示纯逻辑内容指纹；构图时节点身份还会纳入输出字段名，
+    保证相同逻辑只有在产出字段相同时才收敛。
     op 为算子/函数标签（如 sum/div/round/case/window），叶子列/字面量为空。
     """
     name: str = ""
@@ -100,6 +104,7 @@ class TransformNode(BaseNode):
     expression_type: ExpressionType = ExpressionType.FUNCTION
     fingerprint: str = ""
     op: str = ""
+    output_name: str | None = None
 
     def __post_init__(self):
         self.node_type = NodeType.TRANSFORM
