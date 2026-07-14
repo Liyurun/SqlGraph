@@ -22,37 +22,40 @@ PLAYGROUND_HTML = r"""<!DOCTYPE html>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body,#app{width:100%;height:100%;overflow:hidden}
-body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f8f6f1;color:#243042}
+:root{--app-bg:#f8f6f1;--panel-bg:rgba(255,255,255,.92);--canvas-bg:#faf8f5;--text:#243042;--muted:#667085;--border:rgba(0,0,0,.08);--border-strong:rgba(0,0,0,.12);--input-bg:#fff;--textarea-bg:#fbfaf7;--button-bg:#eef0ff;--button-text:#4752c4;--card-bg:#fff;--msg-bg:#f3f4f6;--msg-text:#374151;--glass-bg:rgba(255,255,255,.9);--detail-bg:rgba(255,255,255,.94);--shadow:rgba(0,0,0,.08)}
+body[data-theme="dark"]{--app-bg:#0b1020;--panel-bg:rgba(15,23,42,.94);--canvas-bg:#111827;--text:#e5e7eb;--muted:#94a3b8;--border:rgba(148,163,184,.18);--border-strong:rgba(148,163,184,.28);--input-bg:#111827;--textarea-bg:#0f172a;--button-bg:#1e293b;--button-text:#c4b5fd;--card-bg:#111827;--msg-bg:#1e293b;--msg-text:#cbd5e1;--glass-bg:rgba(15,23,42,.9);--detail-bg:rgba(15,23,42,.96);--shadow:rgba(0,0,0,.32)}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--app-bg);color:var(--text);transition:background .18s ease,color .18s ease}
 #app{display:grid;grid-template-columns:420px 1fr}
-.panel{height:100%;padding:18px;background:rgba(255,255,255,.92);border-right:1px solid rgba(0,0,0,.08);box-shadow:6px 0 24px rgba(0,0,0,.06);display:flex;flex-direction:column;gap:14px;z-index:2}
+.panel{height:100%;padding:18px;background:var(--panel-bg);border-right:1px solid var(--border);box-shadow:6px 0 24px var(--shadow);display:flex;flex-direction:column;gap:14px;z-index:2}
 .brand{font-size:18px;font-weight:800;letter-spacing:-.4px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.sub{font-size:12px;color:#667085;line-height:1.6}
+.sub{font-size:12px;color:var(--muted);line-height:1.6}
 .row{display:flex;gap:8px;align-items:center}
 select,input,textarea,button{font:inherit}
-select,input{height:34px;border:1px solid rgba(0,0,0,.12);border-radius:9px;padding:0 10px;background:#fff;color:#243042}
+select,input{height:34px;border:1px solid var(--border-strong);border-radius:9px;padding:0 10px;background:var(--input-bg);color:var(--text)}
 select{width:120px}
 input{flex:1}
-textarea{flex:1;min-height:360px;width:100%;resize:none;border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:12px;background:#fbfaf7;color:#1f2937;font-family:"SF Mono","JetBrains Mono","Fira Code",monospace;font-size:12px;line-height:1.55;outline:none}
+textarea{flex:1;min-height:360px;width:100%;resize:none;border:1px solid var(--border-strong);border-radius:12px;padding:12px;background:var(--textarea-bg);color:var(--text);font-family:"SF Mono","JetBrains Mono","Fira Code",monospace;font-size:12px;line-height:1.55;outline:none}
 textarea:focus,input:focus,select:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.14)}
-button{height:36px;border:none;border-radius:10px;padding:0 14px;background:#eef0ff;color:#4752c4;font-weight:700;cursor:pointer}
+button{height:36px;border:none;border-radius:10px;padding:0 14px;background:var(--button-bg);color:var(--button-text);font-weight:700;cursor:pointer}
 button.primary{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;box-shadow:0 8px 18px rgba(102,126,234,.25)}
 button:disabled{opacity:.55;cursor:not-allowed}
-.option-row{display:flex;align-items:center;gap:8px;font-size:12px;color:#475467;user-select:none}
+.option-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);user-select:none}
 .option-row input{width:16px;height:16px;accent-color:#667eea;flex:none}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.stat{border:1px solid rgba(0,0,0,.08);border-radius:10px;padding:8px;background:#fff}
-.stat .k{font-size:10px;color:#667085}
+.stat{border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--card-bg)}
+.stat .k{font-size:10px;color:var(--muted)}
 .stat .v{font-size:16px;font-weight:800;margin-top:2px}
-.msg{font-size:12px;line-height:1.6;border-radius:10px;padding:10px;background:#f3f4f6;color:#374151;white-space:pre-wrap;max-height:140px;overflow:auto}
+.msg{font-size:12px;line-height:1.6;border-radius:10px;padding:10px;background:var(--msg-bg);color:var(--msg-text);white-space:pre-wrap;max-height:140px;overflow:auto}
 .msg.err{background:#fff1f2;color:#be123c}.msg.ok{background:#ecfdf3;color:#027a48}
+body[data-theme="dark"] .msg.err{background:#3f1d2a;color:#fecdd3}body[data-theme="dark"] .msg.ok{background:#073b2f;color:#a7f3d0}
 .canvas-wrap{position:relative;width:100%;height:100%}
-#cy{position:absolute;inset:0;background:#faf8f5}
+#cy{position:absolute;inset:0;background:var(--canvas-bg);transition:background .18s ease}
 .topbar{position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:center;gap:8px;z-index:3;pointer-events:none}
-.pill{pointer-events:auto;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.9);backdrop-filter:blur(18px);border-radius:999px;padding:8px 12px;font-size:12px;color:#475467;box-shadow:0 4px 16px rgba(0,0,0,.06)}
+.pill{pointer-events:auto;border:1px solid var(--border);background:var(--glass-bg);backdrop-filter:blur(18px);border-radius:999px;padding:8px 12px;font-size:12px;color:var(--muted);box-shadow:0 4px 16px var(--shadow)}
 .toolbar{margin-left:auto;display:flex;gap:8px;pointer-events:auto}
-.detail{position:absolute;top:62px;right:14px;width:320px;max-height:calc(100vh - 82px);overflow:auto;background:rgba(255,255,255,.94);backdrop-filter:blur(18px);border:1px solid rgba(0,0,0,.08);box-shadow:0 12px 34px rgba(0,0,0,.1);border-radius:14px;padding:14px;z-index:4;display:none}
+.detail{position:absolute;top:62px;right:14px;width:320px;max-height:calc(100vh - 82px);overflow:auto;background:var(--detail-bg);backdrop-filter:blur(18px);border:1px solid var(--border);box-shadow:0 12px 34px var(--shadow);border-radius:14px;padding:14px;z-index:4;display:none}
 .detail.show{display:block}.detail h3{font-size:14px;margin-bottom:8px;word-break:break-all}.badge{display:inline-block;border-radius:6px;padding:2px 7px;background:#667eea;color:#fff;font-size:10px;font-weight:800;margin-bottom:8px}
-.prop{display:flex;gap:8px;border-top:1px solid rgba(0,0,0,.07);padding:7px 0;font-size:12px}.prop .k{width:70px;flex:none;color:#667085}.prop .v{flex:1;word-break:break-all;font-family:"SF Mono","JetBrains Mono",monospace;font-size:11px}
+.prop{display:flex;gap:8px;border-top:1px solid var(--border);padding:7px 0;font-size:12px}.prop .k{width:70px;flex:none;color:var(--muted)}.prop .v{flex:1;word-break:break-all;font-family:"SF Mono","JetBrains Mono",monospace;font-size:11px}
 pre.code{background:#1e1e2e;color:#cdd6f4;border-radius:10px;padding:10px;max-height:260px;overflow:auto;white-space:pre;font-size:11px;line-height:1.5}
 </style>
 </head>
@@ -82,6 +85,10 @@ pre.code{background:#1e1e2e;color:#cdd6f4;border-radius:10px;padding:10px;max-he
     <label class="option-row">
       <input type="checkbox" id="showSqlBridge" checked>
       选中表时高亮 SQL 虚线路径
+    </label>
+    <label class="option-row">
+      <input type="checkbox" id="darkMode">
+      暗色模式
     </label>
     <div class="stats">
       <div class="stat"><div class="k">SQL</div><div class="v" id="sqlCount">0</div></div>
@@ -234,6 +241,42 @@ document.getElementById('fitBtn').onclick = () => cy.fit(undefined, 50);
 document.getElementById('layoutBtn').onclick = applyLayout;
 document.getElementById('sampleBtn').onclick = () => input.value = sampleSql;
 document.getElementById('clearBtn').onclick = () => input.value = '';
+function applyTheme(isDark){
+  document.body.dataset.theme = isDark ? 'dark' : 'light';
+  const nodeText = isDark ? '#e5e7eb' : '#1f2937';
+  const labelBg = isDark ? 'rgba(15,23,42,.92)' : 'rgba(255,255,255,.9)';
+  const transformLabelBg = isDark ? 'rgba(15,23,42,.94)' : 'rgba(255,255,255,.92)';
+  cy.style()
+    .selector('node')
+      .style({'color': nodeText, 'text-background-color': labelBg})
+    .selector('node[nodeType="table"]')
+      .style({'background-color': isDark ? '#1d4ed8' : 'data(bg)', 'border-color': isDark ? '#93c5fd' : 'data(border)'})
+    .selector('node[nodeType="column"]')
+      .style({'background-color': isDark ? '#22c55e' : '#66bb6a', 'border-color': isDark ? '#86efac' : '#2e7d32'})
+    .selector('node[columnRole="read_anchor"]')
+      .style({'background-color': isDark ? '#4ade80' : '#86efac', 'border-color': isDark ? '#bbf7d0' : '#059669'})
+    .selector('node[nodeType="transform"]')
+      .style({'background-color': isDark ? '#f59e0b' : '#ffa726', 'border-color': isDark ? '#fcd34d' : '#ef6c00', 'color': isDark ? '#f8fafc' : '#1f2937', 'text-background-color': transformLabelBg})
+    .selector('node[nodeType="sql"]')
+      .style({'background-color': isDark ? '#6d28d9' : '#7c3aed', 'border-color': isDark ? '#c4b5fd' : '#4c1d95', 'color': '#fff', 'text-outline-color': isDark ? '#312e81' : '#4c1d95'})
+    .selector('edge[edgeType="table_to_column"]')
+      .style({'line-color': isDark ? '#34d399' : '#10b981', 'target-arrow-color': isDark ? '#34d399' : '#10b981'})
+    .selector('edge[edgeType="column_to_table"]')
+      .style({'line-color': isDark ? '#fb923c' : '#f97316', 'target-arrow-color': isDark ? '#fb923c' : '#f97316'})
+    .selector('edge[edgeType="direct_to_table"]')
+      .style({'line-color': isDark ? '#2dd4bf' : '#14b8a6', 'target-arrow-color': isDark ? '#2dd4bf' : '#14b8a6'})
+    .selector('edge[edgeType="rename_column"]')
+      .style({'line-color': isDark ? '#c084fc' : '#a855f7', 'target-arrow-color': isDark ? '#c084fc' : '#a855f7'})
+    .selector('edge[edgeType="reads_from"], edge[edgeType="writes_to"]')
+      .style({'line-color': isDark ? '#c4b5fd' : '#8b5cf6', 'target-arrow-color': isDark ? '#c4b5fd' : '#8b5cf6'})
+    .selector('edge.sql-bridge-context')
+      .style({'line-color': isDark ? '#ddd6fe' : '#6d28d9', 'target-arrow-color': isDark ? '#ddd6fe' : '#6d28d9'})
+    .selector('.faded')
+      .style({'opacity': isDark ? .12 : .08})
+    .update();
+}
+document.getElementById('darkMode').addEventListener('change', evt => applyTheme(evt.target.checked));
+applyTheme(false);
 document.getElementById('parseBtn').onclick = async () => {
   const sql = input.value.trim();
   if(!sql){ setMsg('请输入 SQL。','err'); return; }
