@@ -301,3 +301,32 @@ def test_build_duplicate_cte_logic_reuses_single_intermediate_table():
         if n.table_id == cte_tables[0].id
     }
     assert cte_columns == {"id", "x"}
+
+
+def test_build_create_view_command_fallback_lineage():
+    builder = GraphBuilder(dialect="spark")
+    sql = """
+    CREATE OR replace VIEW `ad_dim`.`v` (
+        `a` COMMENT 'col a',
+        `b`
+    ) PARTITIONED
+    ON (p_date)
+    TBLPROPERTIES ('x'='y') AS
+    SELECT a, b FROM src
+    """
+    graph = builder.build_from_sql(sql, name="create_view_command")
+    table_names = {n.full_name for n in graph.nodes if n.node_type.value == "table"}
+    assert {"src", "ad_dim.v"}.issubset(table_names)
+
+    columns = [n for n in graph.nodes if n.node_type.value == "column"]
+    full_columns = {
+        f"{graph.get_node(n.table_id).full_name}.{n.name}"
+        for n in columns
+    }
+    assert {"src.a", "src.b", "ad_dim.v.a", "ad_dim.v.b"}.issubset(full_columns)
+
+    lineage_pairs = {
+        (graph.get_node(e.source_id).full_name, graph.get_node(e.target_id).full_name)
+        for e in graph.get_edges_by_type(EdgeType.TABLE_LINEAGE)
+    }
+    assert ("src", "ad_dim.v") in lineage_pairs

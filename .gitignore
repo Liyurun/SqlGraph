@@ -48,5 +48,6 @@ failed_cases.json
 smoke_result.json
 
 # Large or private local datasets
+df.csv
 examples/df.csv
 examples/test/

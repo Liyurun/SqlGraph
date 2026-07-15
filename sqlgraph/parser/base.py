@@ -2,6 +2,7 @@
 from __future__ import annotations
 import uuid
 import hashlib
+import re
 from typing import Optional
 import sqlglot
 from sqlglot import exp
@@ -166,6 +167,8 @@ class SqlParser:
             self._parse_select(stmt, result)
         elif isinstance(stmt, exp.Create):
             self._parse_create(stmt, result)
+        elif isinstance(stmt, exp.Command) and self._parse_create_view_command(stmt, result):
+            return
         else:
             log_warn(f"Unsupported statement type: {type(stmt).__name__}")
 
@@ -197,10 +200,28 @@ class SqlParser:
         """
         target = stmt.this
         if target:
-            tgt_name = _table_to_name(target)
-            result.target_tables.append({"name": tgt_name, "is_cte": False})
+            tgt_name = _create_target_to_name(target)
+            if tgt_name:
+                result.target_tables.append({"name": tgt_name, "is_cte": False})
         if stmt.expression:
             self._parse_query_expression(stmt.expression, result)
+
+    def _parse_create_view_command(self, stmt: exp.Command, result: SqlParseResult) -> bool:
+        """兼容 sqlglot 降级为 Command 的 Hive/Spark CREATE VIEW DDL"""
+        parsed = _extract_create_view_command_parts(stmt)
+        if not parsed:
+            return False
+        target_name, query_sql = parsed
+        result.target_tables.append({"name": target_name, "is_cte": False})
+        try:
+            query = sqlglot.parse_one(query_sql, read=self.dialect)
+        except Exception as e:
+            message = f"Failed to parse CREATE VIEW query body for {target_name}: {e}"
+            result.errors.append(message)
+            log_warn(message)
+            return True
+        self._parse_query_expression(query, result)
+        return True
 
     def _extract_ctes(self, stmt) -> None:
         """从语句中提取并注册 CTE
@@ -488,6 +509,141 @@ def _table_to_name(table) -> str:
         parts.append(table.db)
     parts.append(table.name)
     return ".".join(parts)
+
+
+def _create_target_to_name(target) -> str | None:
+    """从 CREATE 目标中提取表/视图名，兼容带字段列表的 Schema 节点"""
+    if isinstance(target, exp.Schema):
+        target = target.this
+    if isinstance(target, exp.Table):
+        return _table_to_name(target)
+    name = getattr(target, "name", None)
+    return name or None
+
+
+def _extract_create_view_command_parts(stmt: exp.Command) -> tuple[str, str] | None:
+    """从 sqlglot Command fallback 中提取 (view_name, query_sql)"""
+    if str(stmt.this).upper() != "CREATE":
+        return None
+    text = f"{stmt.this}{stmt.expression or ''}"
+    target_name = _extract_create_view_name(text)
+    if not target_name:
+        return None
+    as_pos = _find_top_level_as(text)
+    if as_pos < 0:
+        return None
+    query_sql = _strip_wrapping_parentheses(text[as_pos + 2:].strip().rstrip(";"))
+    if not query_sql:
+        return None
+    return target_name, query_sql
+
+
+_CREATE_VIEW_NAME_RE = re.compile(
+    r"""
+    ^\s*CREATE\s+
+    (?:OR\s+REPLACE\s+)?
+    (?:(?:GLOBAL|LOCAL)\s+)?
+    (?:(?:TEMPORARY|TEMP)\s+)?
+    VIEW\s+
+    (?:IF\s+NOT\s+EXISTS\s+)?
+    (?P<name>
+        (?:`[^`]+`|"[^"]+"|[A-Za-z_][\w$-]*)
+        (?:\s*\.\s*(?:`[^`]+`|"[^"]+"|[A-Za-z_][\w$-]*))*
+    )
+    """,
+    flags=re.IGNORECASE | re.VERBOSE,
+)
+
+
+def _extract_create_view_name(sql: str) -> str | None:
+    match = _CREATE_VIEW_NAME_RE.search(sql)
+    if not match:
+        return None
+    raw_name = match.group("name")
+    parts = []
+    for part in re.finditer(r"`([^`]+)`|\"([^\"]+)\"|([A-Za-z_][\w$-]*)", raw_name):
+        parts.append(next(group for group in part.groups() if group))
+    return ".".join(parts) if parts else None
+
+
+def _find_top_level_as(sql: str) -> int:
+    """寻找最外层 AS 关键字，跳过字段列表、属性、字符串和注释"""
+    depth = 0
+    in_single = False
+    in_double = False
+    in_backtick = False
+    in_line_comment = False
+    in_block_comment = False
+    i = 0
+    while i < len(sql):
+        ch = sql[i]
+        nxt = sql[i + 1] if i + 1 < len(sql) else ""
+
+        if in_line_comment:
+            if ch == "\n":
+                in_line_comment = False
+            i += 1
+            continue
+        if in_block_comment:
+            if ch == "*" and nxt == "/":
+                in_block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+        if not in_single and not in_double and not in_backtick:
+            if ch == "-" and nxt == "-":
+                in_line_comment = True
+                i += 2
+                continue
+            if ch == "/" and nxt == "*":
+                in_block_comment = True
+                i += 2
+                continue
+
+        if ch == "`" and not in_single and not in_double:
+            in_backtick = not in_backtick
+        elif ch == "'" and not in_double and not in_backtick:
+            in_single = not in_single
+        elif ch == '"' and not in_single and not in_backtick:
+            in_double = not in_double
+        elif not in_single and not in_double and not in_backtick:
+            if ch == "(":
+                depth += 1
+            elif ch == ")" and depth > 0:
+                depth -= 1
+            elif depth == 0 and sql[i:i + 2].lower() == "as":
+                before = sql[i - 1] if i > 0 else " "
+                after = sql[i + 2] if i + 2 < len(sql) else " "
+                if not (before.isalnum() or before == "_") and not (after.isalnum() or after == "_"):
+                    return i
+        i += 1
+    return -1
+
+
+def _strip_wrapping_parentheses(sql: str) -> str:
+    text = sql.strip()
+    if not text.startswith("("):
+        return text
+    depth = 0
+    in_single = False
+    in_double = False
+    in_backtick = False
+    for idx, ch in enumerate(text):
+        if ch == "`" and not in_single and not in_double:
+            in_backtick = not in_backtick
+        elif ch == "'" and not in_double and not in_backtick:
+            in_single = not in_single
+        elif ch == '"' and not in_single and not in_backtick:
+            in_double = not in_double
+        elif not in_single and not in_double and not in_backtick:
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    return text[1:idx].strip() if not text[idx + 1:].strip() else text
+    return text
 
 
 def _query_output_names(query) -> list[str]:

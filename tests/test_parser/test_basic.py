@@ -249,3 +249,42 @@ def test_parse_duplicate_cte_logic_merges_by_fingerprint():
         for c in result.columns
         if c["name"] in {"ax", "bx"}
     } == {f"{logical_name}.x"}
+
+
+def test_parse_create_view_with_schema_columns():
+    parser = SqlParser(dialect="spark")
+    sql = """
+    CREATE OR REPLACE VIEW `ad_dim`.`v` (
+        `a` COMMENT 'col a',
+        `b`
+    ) AS
+    SELECT a, b FROM src
+    """
+    result = parser.parse(sql, name="create_view")
+    assert result.target_tables == [{"name": "ad_dim.v", "is_cte": False}]
+    assert {t["name"] for t in result.source_tables} == {"src"}
+    assert [(c["table"], c["name"], c["physical_column"]) for c in result.columns] == [
+        ("ad_dim.v", "a", "src.a"),
+        ("ad_dim.v", "b", "src.b"),
+    ]
+
+
+def test_parse_create_view_command_fallback_with_properties():
+    parser = SqlParser(dialect="spark")
+    sql = """
+    CREATE OR replace VIEW `ad_dim`.`v` (
+        `a` COMMENT 'col a',
+        `b`
+    ) PARTITIONED
+    ON (p_date)
+    TBLPROPERTIES ('x'='y') AS
+    SELECT a, b FROM src
+    """
+    result = parser.parse(sql, name="create_view_command")
+    assert result.errors == []
+    assert result.target_tables == [{"name": "ad_dim.v", "is_cte": False}]
+    assert {t["name"] for t in result.source_tables} == {"src"}
+    assert [(c["table"], c["name"], c["physical_column"]) for c in result.columns] == [
+        ("ad_dim.v", "a", "src.a"),
+        ("ad_dim.v", "b", "src.b"),
+    ]
