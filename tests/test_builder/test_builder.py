@@ -141,3 +141,163 @@ def test_expr_dag_distinct_physical_columns():
     cast_nodes = [n for n in graph.nodes
                   if n.node_type.value == "transform" and n.op in ("trycast", "cast")]
     assert len(cast_nodes) == 2
+
+
+def test_build_insert_union_all_lineage():
+    """INSERT ... UNION ALL 应保留所有分支的源表和字段依赖"""
+    builder = GraphBuilder(dialect="spark")
+    sql = """
+    INSERT OVERWRITE TABLE dst
+    SELECT id FROM src_a
+    UNION ALL
+    SELECT user_id FROM src_b
+    """
+    graph = builder.build_from_sql(sql, name="union_test")
+    table_names = {n.full_name for n in graph.nodes if n.node_type.value == "table"}
+    assert {"src_a", "src_b", "dst"}.issubset(table_names)
+    lineage_edges = graph.get_edges_by_type(EdgeType.TABLE_LINEAGE)
+    lineage_pairs = {
+        (graph.get_node(e.source_id).full_name, graph.get_node(e.target_id).full_name)
+        for e in lineage_edges
+    }
+    assert ("src_a", "dst") in lineage_pairs
+    assert ("src_b", "dst") in lineage_pairs
+    deps = graph.get_edges_by_type(EdgeType.COMPUTE_DEPENDENCY)
+    assert len(deps) == 2
+
+
+def test_build_lateral_view_explode_lineage():
+    """LATERAL VIEW explode 输出列应由 explode(items) Transform 产出"""
+    builder = GraphBuilder(dialect="spark")
+    sql = """
+    INSERT OVERWRITE TABLE dst
+    SELECT id, item
+    FROM src
+    LATERAL VIEW explode(items) t AS item
+    """
+    graph = builder.build_from_sql(sql, name="lateral_explode")
+    transforms = [n for n in graph.nodes if n.node_type.value == "transform"]
+    assert len(transforms) == 1
+    assert transforms[0].expression == "EXPLODE(src.items)"
+    assert transforms[0].output_name == "item"
+    produces = graph.get_edges_by_type(EdgeType.PRODUCES)
+    assert any(e.source_id == transforms[0].id for e in produces)
+
+
+def test_build_lateral_view_output_inside_expression_uses_generator_source():
+    """lateral 产出列进入表达式时，应依赖 generator 的真实源字段"""
+    builder = GraphBuilder(dialect="spark")
+    sql = """
+    INSERT OVERWRITE TABLE dst
+    SELECT concat(item, '_x') AS item_x
+    FROM src
+    LATERAL VIEW explode(items) t AS item
+    """
+    graph = builder.build_from_sql(sql, name="lateral_expr")
+    columns = [n for n in graph.nodes if n.node_type.value == "column"]
+    full_columns = {
+        f"{graph.get_node(n.table_id).full_name}.{n.name}"
+        for n in columns
+    }
+    assert "src.items" in full_columns
+    assert "src.item" not in full_columns
+    transforms = [n for n in graph.nodes if n.node_type.value == "transform"]
+    assert len(transforms) == 1
+    assert transforms[0].expression == "CONCAT(EXPLODE(src.items), '_x')"
+
+
+def test_build_cte_columns_are_connected_across_subqueries():
+    """CTE 输出字段应作为下游 CTE/最终查询的真实读取起点"""
+    builder = GraphBuilder(dialect="spark")
+    sql = """
+    WITH base AS (
+        SELECT id, payload, get_json_object(payload, '$.items') AS output_items_json
+        FROM raw_log
+    ), parsed AS (
+        SELECT
+            id,
+            from_json(output_items_json, 'array<struct<Item:struct<id:string,type:struct<type:int>>>>') AS output_items
+        FROM base
+    )
+    SELECT
+        id,
+        oi.Item.id AS item_id,
+        oi.Item.type.type AS item_type
+    FROM parsed
+    LATERAL VIEW explode(output_items) e AS oi
+    """
+    graph = builder.build_from_sql(sql, name="cte_lateral")
+    tables = [n for n in graph.nodes if n.node_type.value == "table"]
+    table_names = {n.full_name for n in tables}
+    table_by_alias = {
+        alias: n
+        for n in tables
+        for alias in getattr(n, "aliases", [])
+    }
+    base_name = table_by_alias["base"].full_name
+    parsed_name = table_by_alias["parsed"].full_name
+    assert {"raw_log", "cte_lateral_result", base_name, parsed_name}.issubset(table_names)
+    assert "UNKNOWN" not in table_names
+    assert "Item" not in table_names
+    assert "type" not in table_names
+
+    columns = [n for n in graph.nodes if n.node_type.value == "column"]
+    full_columns = {
+        f"{graph.get_node(n.table_id).full_name}.{n.name}"
+        for n in columns
+    }
+    assert {
+        "raw_log.id",
+        "raw_log.payload",
+        f"{base_name}.id",
+        f"{base_name}.output_items_json",
+        f"{parsed_name}.id",
+        f"{parsed_name}.output_items",
+        "cte_lateral_result.id",
+        "cte_lateral_result.item_id",
+        "cte_lateral_result.item_type",
+    }.issubset(full_columns)
+
+    def col_id(full_name: str) -> str:
+        table, column = full_name.rsplit(".", 1)
+        return next(
+            n.id for n in columns
+            if n.name == column and graph.get_node(n.table_id).full_name == table
+        )
+
+    dep_pairs = {
+        (e.source_id, e.target_id)
+        for e in graph.get_edges_by_type(EdgeType.COMPUTE_DEPENDENCY)
+    }
+    assert (col_id("raw_log.id"), col_id(f"{base_name}.id")) in dep_pairs
+    assert (col_id(f"{base_name}.id"), col_id(f"{parsed_name}.id")) in dep_pairs
+
+    transforms = [n for n in graph.nodes if n.node_type.value == "transform"]
+    item_id_transform = next(t for t in transforms if t.expression == f"EXPLODE({parsed_name}.output_items).Item.id")
+    item_type_transform = next(t for t in transforms if t.expression == f"EXPLODE({parsed_name}.output_items).Item.type.type")
+    produces_pairs = {
+        (e.source_id, e.target_id)
+        for e in graph.get_edges_by_type(EdgeType.PRODUCES)
+    }
+    assert (item_id_transform.id, col_id("cte_lateral_result.item_id")) in produces_pairs
+    assert (item_type_transform.id, col_id("cte_lateral_result.item_type")) in produces_pairs
+
+
+def test_build_duplicate_cte_logic_reuses_single_intermediate_table():
+    builder = GraphBuilder(dialect="spark")
+    sql = """
+    WITH a AS (SELECT id, get_json_object(payload, '$.x') AS x FROM raw_log),
+         b AS (SELECT id, get_json_object(payload, '$.x') AS x FROM raw_log)
+    SELECT a.x AS ax, b.x AS bx
+    FROM a JOIN b ON a.id = b.id
+    """
+    graph = builder.build_from_sql(sql, name="dup_cte")
+    cte_tables = [n for n in graph.nodes if n.node_type.value == "table" and n.is_cte]
+    assert len(cte_tables) == 1
+    assert cte_tables[0].aliases == ["a", "b"]
+    columns = [n for n in graph.nodes if n.node_type.value == "column"]
+    cte_columns = {
+        n.name for n in columns
+        if n.table_id == cte_tables[0].id
+    }
+    assert cte_columns == {"id", "x"}

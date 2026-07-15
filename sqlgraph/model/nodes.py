@@ -62,6 +62,8 @@ class TableNode(BaseNode):
     catalog: str | None = None
     schema_name: str | None = None
     is_cte: bool = False
+    aliases: list[str] = field(default_factory=list)
+    logic_fingerprint: str | None = None
     columns: list = field(default_factory=list)
 
     def __post_init__(self):

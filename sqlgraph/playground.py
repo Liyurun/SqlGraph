@@ -24,6 +24,8 @@ PLAYGROUND_HTML = r"""<!DOCTYPE html>
 html,body,#app{width:100%;height:100%;overflow:hidden}
 :root{--app-bg:#f8f6f1;--panel-bg:rgba(255,255,255,.92);--canvas-bg:#faf8f5;--text:#243042;--muted:#667085;--border:rgba(0,0,0,.08);--border-strong:rgba(0,0,0,.12);--input-bg:#fff;--textarea-bg:#fbfaf7;--button-bg:#eef0ff;--button-text:#4752c4;--card-bg:#fff;--msg-bg:#f3f4f6;--msg-text:#374151;--glass-bg:rgba(255,255,255,.9);--detail-bg:rgba(255,255,255,.94);--shadow:rgba(0,0,0,.08)}
 body[data-theme="dark"]{--app-bg:#0b1020;--panel-bg:rgba(15,23,42,.94);--canvas-bg:#111827;--text:#e5e7eb;--muted:#94a3b8;--border:rgba(148,163,184,.18);--border-strong:rgba(148,163,184,.28);--input-bg:#111827;--textarea-bg:#0f172a;--button-bg:#1e293b;--button-text:#c4b5fd;--card-bg:#111827;--msg-bg:#1e293b;--msg-text:#cbd5e1;--glass-bg:rgba(15,23,42,.9);--detail-bg:rgba(15,23,42,.96);--shadow:rgba(0,0,0,.32)}
+:root{--legend-table-bg:#64b5f6;--legend-table-border:#42a5f5;--legend-column-bg:#66bb6a;--legend-column-border:#2e7d32;--legend-sql-bg:#7c3aed;--legend-sql-border:#4c1d95;--legend-transform-bg:#ffa726;--legend-transform-border:#ef6c00;--legend-table-col:#10b981;--legend-direct:#14b8a6;--legend-rename:#a855f7;--legend-output:#f97316;--legend-sql-line:#8b5cf6}
+body[data-theme="dark"]{--legend-table-bg:#1d4ed8;--legend-table-border:#93c5fd;--legend-column-bg:#22c55e;--legend-column-border:#86efac;--legend-sql-bg:#6d28d9;--legend-sql-border:#c4b5fd;--legend-transform-bg:#f59e0b;--legend-transform-border:#fcd34d;--legend-table-col:#34d399;--legend-direct:#2dd4bf;--legend-rename:#c084fc;--legend-output:#fb923c;--legend-sql-line:#c4b5fd}
 body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--app-bg);color:var(--text);transition:background .18s ease,color .18s ease}
 #app{display:grid;grid-template-columns:420px 1fr}
 .panel{height:100%;padding:18px;background:var(--panel-bg);border-right:1px solid var(--border);box-shadow:6px 0 24px var(--shadow);display:flex;flex-direction:column;gap:14px;z-index:2}
@@ -53,6 +55,14 @@ body[data-theme="dark"] .msg.err{background:#3f1d2a;color:#fecdd3}body[data-them
 .topbar{position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:center;gap:8px;z-index:3;pointer-events:none}
 .pill{pointer-events:auto;border:1px solid var(--border);background:var(--glass-bg);backdrop-filter:blur(18px);border-radius:999px;padding:8px 12px;font-size:12px;color:var(--muted);box-shadow:0 4px 16px var(--shadow)}
 .toolbar{margin-left:auto;display:flex;gap:8px;pointer-events:auto}
+.legend{position:absolute;left:14px;bottom:14px;z-index:3;width:min(560px,calc(100% - 28px));border:1px solid var(--border);background:var(--glass-bg);backdrop-filter:blur(18px);box-shadow:0 12px 34px var(--shadow);border-radius:16px;padding:11px 12px;pointer-events:auto}
+.legend-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.legend-title{font-size:12px;font-weight:850;color:var(--text);letter-spacing:.02em}.legend-note{font-size:10px;color:var(--muted)}
+.legend-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px}
+.legend-item{display:flex;align-items:center;gap:8px;min-width:0;color:var(--muted);font-size:11px;line-height:1.25}.legend-item strong{display:block;color:var(--text);font-size:11px;font-weight:780;white-space:nowrap}.legend-item span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legend-mark{position:relative;flex:0 0 auto}.legend-node{width:18px;height:18px;border:2px solid;border-radius:999px;box-shadow:0 0 0 2px rgba(255,255,255,.08)}.legend-node.table{background:var(--legend-table-bg);border-color:var(--legend-table-border)}.legend-node.column{width:13px;height:13px;background:var(--legend-column-bg);border-color:var(--legend-column-border)}.legend-node.sql{width:28px;height:16px;border-radius:5px;background:var(--legend-sql-bg);border-color:var(--legend-sql-border)}.legend-node.transform{width:15px;height:15px;border-radius:3px;background:var(--legend-transform-bg);border-color:var(--legend-transform-border);transform:rotate(45deg);margin-left:2px}
+.legend-line{width:30px;height:0;border-top:3px solid currentColor;color:var(--legend-direct)}.legend-line:after{content:"";position:absolute;right:-1px;top:-5px;border-left:7px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent}.legend-line.table-col{color:var(--legend-table-col)}.legend-line.direct{color:var(--legend-direct)}.legend-line.rename{color:var(--legend-rename)}.legend-line.output{color:var(--legend-output)}.legend-line.sql-path{color:var(--legend-sql-line);border-top-style:dashed;border-top-width:2px}
+@media (max-width:980px){.legend{width:calc(100% - 28px)}.legend-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .detail{position:absolute;top:62px;right:14px;width:320px;max-height:calc(100vh - 82px);overflow:auto;background:var(--detail-bg);backdrop-filter:blur(18px);border:1px solid var(--border);box-shadow:0 12px 34px var(--shadow);border-radius:14px;padding:14px;z-index:4;display:none}
 .detail.show{display:block}.detail h3{font-size:14px;margin-bottom:8px;word-break:break-all}.badge{display:inline-block;border-radius:6px;padding:2px 7px;background:#667eea;color:#fff;font-size:10px;font-weight:800;margin-bottom:8px}
 .prop{display:flex;gap:8px;border-top:1px solid var(--border);padding:7px 0;font-size:12px}.prop .k{width:70px;flex:none;color:var(--muted)}.prop .v{flex:1;word-break:break-all;font-family:"SF Mono","JetBrains Mono",monospace;font-size:11px}
@@ -106,6 +116,23 @@ pre.code{background:#1e1e2e;color:#cdd6f4;border-radius:10px;padding:10px;max-he
         <button id="layoutBtn">重新布局</button>
       </div>
     </div>
+    <section class="legend" aria-label="图例：节点与边颜色含义">
+      <div class="legend-head">
+        <div class="legend-title">图例</div>
+        <div class="legend-note">按节点/边语义上色</div>
+      </div>
+      <div class="legend-grid">
+        <div class="legend-item"><i class="legend-mark legend-node table"></i><span><strong>表</strong>Table</span></div>
+        <div class="legend-item"><i class="legend-mark legend-node column"></i><span><strong>字段</strong>Column</span></div>
+        <div class="legend-item"><i class="legend-mark legend-node sql"></i><span><strong>SQL</strong>加工任务</span></div>
+        <div class="legend-item"><i class="legend-mark legend-node transform"></i><span><strong>加工逻辑</strong>Transform</span></div>
+        <div class="legend-item"><i class="legend-mark legend-line table-col"></i><span><strong>表挂字段</strong>table_to_column</span></div>
+        <div class="legend-item"><i class="legend-mark legend-line direct"></i><span><strong>同名透传</strong>direct</span></div>
+        <div class="legend-item"><i class="legend-mark legend-line rename"></i><span><strong>字段对齐/重命名</strong>rename</span></div>
+        <div class="legend-item"><i class="legend-mark legend-line output"></i><span><strong>输出写表</strong>column_to_table</span></div>
+        <div class="legend-item"><i class="legend-mark legend-line sql-path"></i><span><strong>SQL 路径</strong>虚线</span></div>
+      </div>
+    </section>
     <div class="detail" id="detail"></div>
   </main>
 </div>
@@ -161,6 +188,7 @@ let cy = cytoscape({
     {selector:'edge[edgeType="table_to_column"]',style:{'width':1.8,'opacity':.78,'line-color':'#10b981','target-arrow-color':'#10b981'}},
     {selector:'edge[edgeType="column_to_table"]',style:{'width':1.8,'opacity':.78,'line-color':'#f97316','target-arrow-color':'#f97316'}},
     {selector:'edge[edgeType="direct_to_table"]',style:{'width':2.1,'opacity':.82,'line-color':'#14b8a6','target-arrow-color':'#14b8a6'}},
+    {selector:'edge[edgeType="direct_column"]',style:{'width':1.8,'opacity':.78,'line-color':'#14b8a6','target-arrow-color':'#14b8a6'}},
     {selector:'edge[edgeType="rename_column"]',style:{'width':1.8,'opacity':.78,'line-color':'#a855f7','target-arrow-color':'#a855f7'}},
     {selector:'edge[edgeType="reads_from"]',style:{'display':'element','width':1.3,'opacity':.42,'line-color':'#8b5cf6','target-arrow-color':'#8b5cf6','line-style':'dashed'}},
     {selector:'edge[edgeType="writes_to"]',style:{'display':'element','width':1.5,'opacity':.48,'line-color':'#8b5cf6','target-arrow-color':'#8b5cf6','line-style':'dashed'}},
@@ -265,6 +293,8 @@ function applyTheme(isDark){
       .style({'line-color': isDark ? '#fb923c' : '#f97316', 'target-arrow-color': isDark ? '#fb923c' : '#f97316'})
     .selector('edge[edgeType="direct_to_table"]')
       .style({'line-color': isDark ? '#2dd4bf' : '#14b8a6', 'target-arrow-color': isDark ? '#2dd4bf' : '#14b8a6'})
+    .selector('edge[edgeType="direct_column"]')
+      .style({'line-color': isDark ? '#2dd4bf' : '#14b8a6', 'target-arrow-color': isDark ? '#2dd4bf' : '#14b8a6'})
     .selector('edge[edgeType="rename_column"]')
       .style({'line-color': isDark ? '#c084fc' : '#a855f7', 'target-arrow-color': isDark ? '#c084fc' : '#a855f7'})
     .selector('edge[edgeType="reads_from"], edge[edgeType="writes_to"]')
@@ -368,7 +398,13 @@ def _normalize_elements_for_data_flow(elements: list[dict[str, Any]]) -> None:
     output_columns: set[str] = set()
     direct_output_columns: set[str] = set()
     direct_same_outputs: set[str] = set()
+    direct_dependency_same: dict[tuple[str, str], bool] = {}
+    direct_output_dependencies: dict[str, list[bool]] = {}
     col_to_table: dict[str, str] = {}
+    collapsed_table_ids = {
+        node_id for node_id, node in node_by_id.items()
+        if node.get("nodeType") == "table" and node.get("isCte")
+    }
 
     for el in elements:
         data = el.get("data", {})
@@ -381,8 +417,12 @@ def _normalize_elements_for_data_flow(elements: list[dict[str, Any]]) -> None:
                 if src_type == "column" and tgt_type == "column":
                     input_columns.add(data.get("source"))
                     direct_output_columns.add(data.get("target"))
-                    if _same_column_name(node_by_id.get(data.get("source"), {}), node_by_id.get(data.get("target"), {})):
-                        direct_same_outputs.add(data.get("target"))
+                    same_name = _same_column_name(
+                        node_by_id.get(data.get("source"), {}),
+                        node_by_id.get(data.get("target"), {}),
+                    )
+                    direct_dependency_same[(data.get("source"), data.get("target"))] = same_name
+                    direct_output_dependencies.setdefault(data.get("target"), []).append(same_name)
                 else:
                     input_columns.add(data.get("source"))
             elif data.get("edgeType") == "produces":
@@ -393,6 +433,11 @@ def _normalize_elements_for_data_flow(elements: list[dict[str, Any]]) -> None:
                 lineage_sources.add(data.get("source"))
                 lineage_targets.add(data.get("target"))
             continue
+    direct_same_outputs = {
+        target
+        for target, dependencies in direct_output_dependencies.items()
+        if dependencies and all(dependencies)
+    }
     _fill_column_table_map_from_nodes(col_to_table, node_by_id)
     for el in elements:
         data = el.get("data", {})
@@ -420,6 +465,7 @@ def _normalize_elements_for_data_flow(elements: list[dict[str, Any]]) -> None:
         output_columns=output_columns,
         col_to_table=col_to_table,
         node_by_id=node_by_id,
+        collapsed_table_ids=collapsed_table_ids,
     )
     normalized: list[dict[str, Any]] = []
     for anchor in read_anchor_by_column.values():
@@ -433,8 +479,9 @@ def _normalize_elements_for_data_flow(elements: list[dict[str, Any]]) -> None:
                 if src_type == "column" and tgt_type == "column":
                     target_table = col_to_table.get(data.get("target"))
                     source_id = _read_anchor_id(read_anchor_by_column, data.get("source"))
+                    same_name = direct_dependency_same.get((data.get("source"), data.get("target")), False)
                     if data.get("target") in direct_same_outputs:
-                        if target_table:
+                        if target_table and target_table not in collapsed_table_ids:
                             normalized.append(_edge_like(
                                 el,
                                 source=source_id,
@@ -444,13 +491,24 @@ def _normalize_elements_for_data_flow(elements: list[dict[str, Any]]) -> None:
                                 opacity=0.82,
                                 width=2.1,
                             ))
+                        else:
+                            normalized.append(_edge_like(
+                                el,
+                                source=source_id,
+                                target=data.get("target"),
+                                edge_type="direct_column",
+                                color="#14b8a6",
+                                opacity=0.78,
+                                width=1.8,
+                            ))
                     else:
+                        edge_type = "direct_column" if same_name else "rename_column"
                         normalized.append(_edge_like(
                             el,
                             source=source_id,
                             target=data.get("target"),
-                            edge_type="rename_column",
-                            color="#a855f7",
+                            edge_type=edge_type,
+                            color="#14b8a6" if same_name else "#a855f7",
                             opacity=0.78,
                             width=1.8,
                         ))
@@ -468,6 +526,8 @@ def _normalize_elements_for_data_flow(elements: list[dict[str, Any]]) -> None:
             continue
         table_id = data.get("source")
         column_id = data.get("target")
+        if table_id in collapsed_table_ids:
+            continue
         if column_id in output_columns and column_id not in direct_same_outputs:
             down = {
                 **el,
@@ -503,6 +563,7 @@ def _normalize_elements_for_data_flow(elements: list[dict[str, Any]]) -> None:
         input_columns=input_columns,
         col_to_table=col_to_table,
         read_anchor_by_column=read_anchor_by_column,
+        collapsed_table_ids=collapsed_table_ids,
     )
     connected_ids = set()
     for el in normalized:
@@ -513,7 +574,10 @@ def _normalize_elements_for_data_flow(elements: list[dict[str, Any]]) -> None:
     elements[:] = [
         el for el in normalized
         if "source" in el.get("data", {})
-        or el.get("data", {}).get("nodeType") in ("table", "sql")
+        or (
+            el.get("data", {}).get("nodeType") in ("table", "sql")
+            and el.get("data", {}).get("id") not in collapsed_table_ids
+        )
         or el.get("data", {}).get("id") in connected_ids
     ]
 
@@ -536,8 +600,10 @@ def _ensure_input_columns_have_table_edges(
     input_columns: set[str],
     col_to_table: dict[str, str],
     read_anchor_by_column: dict[str, list[dict[str, Any]]],
+    collapsed_table_ids: set[str] | None = None,
 ) -> None:
     """保证所有作为上游起点的字段都先挂在所属表下面"""
+    collapsed_table_ids = collapsed_table_ids or set()
     existing = {
         (data.get("source"), data.get("target"))
         for data in (el.get("data", {}) for el in normalized)
@@ -545,7 +611,7 @@ def _ensure_input_columns_have_table_edges(
     }
     for column_id in sorted(input_columns - {None}):
         table_id = col_to_table.get(column_id)
-        if not table_id:
+        if not table_id or table_id in collapsed_table_ids:
             continue
         visible_column_id = _read_anchor_id(read_anchor_by_column, column_id)
         if not visible_column_id or (table_id, visible_column_id) in existing:
@@ -569,13 +635,15 @@ def _build_read_anchors(
     output_columns: set[str],
     col_to_table: dict[str, str],
     node_by_id: dict[str, dict[str, Any]],
+    collapsed_table_ids: set[str] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """为中间表字段生成展示用读取锚点，避免复用同一字段节点造成双向箭头"""
     anchors: dict[str, list[dict[str, Any]]] = {}
+    collapsed_table_ids = collapsed_table_ids or set()
     for column_id in sorted((input_columns & output_columns) - {None}):
         table_id = col_to_table.get(column_id)
         column = node_by_id.get(column_id)
-        if not table_id or not column or column.get("nodeType") != "column":
+        if not table_id or table_id in collapsed_table_ids or not column or column.get("nodeType") != "column":
             continue
         table = node_by_id.get(table_id, {})
         anchor_id = f"{column_id}__read_anchor"

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import uuid
 import hashlib
+import re
 from typing import Optional
 from sqlgraph.model import (
     PropertyGraph, SqlNode, TableNode, ColumnNode, TransformNode,
@@ -46,6 +47,12 @@ def _expr_type_from_str(t: str) -> ExpressionType:
 def _normalize_output_name(name: str | None) -> str:
     """输出字段名用于表达式合并 key，按常见 SQL 语义做大小写归一"""
     return (name or "").strip().strip("`\"").lower()
+
+
+def _result_table_name(sql_name: str | None) -> str:
+    """为无显式目标表的 SELECT 构造稳定的结果集表名"""
+    safe_name = re.sub(r"\W+", "_", sql_name or "select").strip("_").lower()
+    return f"{safe_name or 'select'}_result"
 
 
 class GraphBuilder:
@@ -164,17 +171,46 @@ class GraphBuilder:
             ))
             self.table_registry.register_producer(tname, result.sql_id, tid)
 
+        if not result.target_tables and any(col.get("table") is None for col in result.columns):
+            tname = _result_table_name(result.sql_name)
+            tid = self._ensure_table_node(tname, is_cte=False)
+            self.graph.add_edge(Edge(
+                id=_gen_id("e"),
+                source_id=result.sql_id,
+                target_id=tid,
+                edge_type=EdgeType.WRITES_TO,
+            ))
+            self.table_registry.register_producer(tname, result.sql_id, tid)
+
         for cte in result.cte_tables:
-            tid = self._ensure_table_node(cte["name"], is_cte=True)
+            self._ensure_table_node(
+                cte["name"],
+                is_cte=True,
+                aliases=[cte.get("alias")] if cte.get("alias") else None,
+                logic_fingerprint=cte.get("logic_fingerprint"),
+            )
 
         for col in result.columns:
             self._add_column_dependency(sql_node.id, col)
 
         self._current_ctes = []
 
-    def _ensure_table_node(self, table_name: str, is_cte: bool = False) -> str:
+    def _ensure_table_node(
+        self,
+        table_name: str,
+        is_cte: bool = False,
+        aliases: list[str] | None = None,
+        logic_fingerprint: str | None = None,
+    ) -> str:
         """确保表节点存在，返回节点 ID（id 由表名确定性生成）"""
         if table_name in self._table_nodes:
+            node = self.graph.get_node(self._table_nodes[table_name])
+            if node and is_cte:
+                for alias in aliases or []:
+                    if alias and alias not in node.aliases:
+                        node.aliases.append(alias)
+                if logic_fingerprint and not node.logic_fingerprint:
+                    node.logic_fingerprint = logic_fingerprint
             return self._table_nodes[table_name]
         parts = table_name.split(".")
         catalog = parts[0] if len(parts) > 2 else None
@@ -186,6 +222,8 @@ class GraphBuilder:
             catalog=catalog,
             schema_name=schema_name,
             is_cte=is_cte,
+            aliases=[a for a in (aliases or []) if a],
+            logic_fingerprint=logic_fingerprint,
         )
         if is_cte:
             node.name = table_name
@@ -255,14 +293,20 @@ class GraphBuilder:
         """
         col_name = col_info["name"]
 
-        target_tables = [e.target_id for e in self.graph.edges
-                         if e.source_id == sql_id and e.edge_type == EdgeType.WRITES_TO]
+        cte_names = {c["name"] for c in self._current_ctes}
         out_col_ids = []
-        for ttid in target_tables:
-            tbl_node = self.graph.get_node(ttid)
-            if tbl_node and tbl_node.is_cte:
-                continue
-            out_col_ids.append(self._ensure_column_node(ttid, col_name))
+        target_table = col_info.get("table")
+        if target_table:
+            table_id = self._ensure_table_node(target_table, is_cte=target_table in cte_names)
+            out_col_ids.append(self._ensure_column_node(table_id, col_name))
+        else:
+            target_tables = [e.target_id for e in self.graph.edges
+                             if e.source_id == sql_id and e.edge_type == EdgeType.WRITES_TO]
+            for ttid in target_tables:
+                tbl_node = self.graph.get_node(ttid)
+                if tbl_node and tbl_node.is_cte:
+                    continue
+                out_col_ids.append(self._ensure_column_node(ttid, col_name))
 
         # 透传列：物理列直接连输出列
         if col_info.get("passthrough"):

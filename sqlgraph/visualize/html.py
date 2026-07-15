@@ -96,6 +96,9 @@ def _prepare_elements(graph: PropertyGraph, view: str = "table") -> list:
         ntype = nd.get("node_type", "unknown")
         colors = NODE_COLORS.get(ntype, NODE_COLORS["table"])
         label = nd.get("name", nd["id"])
+        aliases = nd.get("aliases") or []
+        if nd.get("is_cte") and aliases:
+            label = " / ".join(aliases)
         is_target = nd["id"] in target_tables
         is_source = nd["id"] in source_tables and not is_target
         is_leaf = nd["id"] in leaf_tables

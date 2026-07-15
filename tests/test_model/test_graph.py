@@ -57,3 +57,18 @@ def test_to_dict():
     assert "edges" in d
     assert len(d["nodes"]) == 6
     assert len(d["edges"]) == 8
+
+
+def test_table_full_name_lookup_with_duplicate_short_names():
+    g = PropertyGraph()
+    g.add_node(TableNode(id="src1", name="src", schema_name="db1"))
+    g.add_node(TableNode(id="src2", name="src", schema_name="db2"))
+    g.add_node(TableNode(id="dst1", name="dst", schema_name="db1"))
+    g.add_node(TableNode(id="dst2", name="dst", schema_name="db2"))
+    g.add_edge(Edge("e1", "src1", "dst1", EdgeType.TABLE_LINEAGE))
+    g.add_edge(Edge("e2", "src2", "dst2", EdgeType.TABLE_LINEAGE))
+
+    assert g.get_node_by_name("db1.dst").id == "dst1"
+    assert g.get_node_by_name("db2.dst").id == "dst2"
+    assert g.get_upstream("db1.dst") == ["db1.src"]
+    assert g.get_upstream("db2.dst") == ["db2.src"]

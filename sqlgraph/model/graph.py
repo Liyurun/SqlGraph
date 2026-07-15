@@ -27,7 +27,11 @@ class PropertyGraph:
         if node.id in self._nodes:
             raise ValueError(f"Node with id '{node.id}' already exists")
         self._nodes[node.id] = node
-        self._node_by_name[node.name] = node.id
+        # 短名可能重复（如 db1.orders 与 db2.orders），不覆盖已有索引；
+        # 对 TableNode 额外注册 full_name，保证全限定表名查询可靠。
+        self._node_by_name.setdefault(node.name, node.id)
+        if isinstance(node, TableNode):
+            self._node_by_name.setdefault(node.full_name, node.id)
 
     def add_edge(self, edge: Edge) -> None:
         """添加边"""
@@ -78,7 +82,7 @@ class PropertyGraph:
             if edge.edge_type == EdgeType.TABLE_LINEAGE and edge.target_id == tgt_id:
                 src = self._nodes.get(edge.source_id)
                 if src and isinstance(src, TableNode):
-                    upstream.append(src.name)
+                    upstream.append(src.full_name)
         return upstream
 
     def get_downstream(self, table_name: str) -> list:
@@ -91,7 +95,7 @@ class PropertyGraph:
             if edge.edge_type == EdgeType.TABLE_LINEAGE and edge.source_id == src_id:
                 tgt = self._nodes.get(edge.target_id)
                 if tgt and isinstance(tgt, TableNode):
-                    downstream.append(tgt.name)
+                    downstream.append(tgt.full_name)
         return downstream
 
     def get_nodes_by_type(self, node_type: NodeType) -> list:

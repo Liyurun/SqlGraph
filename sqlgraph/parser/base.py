@@ -1,6 +1,7 @@
 # sqlgraph/parser/base.py
 from __future__ import annotations
 import uuid
+import hashlib
 from typing import Optional
 import sqlglot
 from sqlglot import exp
@@ -138,6 +139,7 @@ class SqlParser:
         self._cte_aliases = {}
         self._current_source_tables = []
         self._current_all_sources = []
+        self._parsed_derived_queries = set()
         self._current_result = result
         try:
             statements = sqlglot.parse(sql, read=self.dialect)
@@ -182,8 +184,7 @@ class SqlParser:
             tgt_name = _table_to_name(target)
             result.target_tables.append({"name": tgt_name, "is_cte": False})
         if stmt.expression:
-            if isinstance(stmt.expression, exp.Select):
-                self._parse_select(stmt.expression, result)
+            self._parse_query_expression(stmt.expression, result)
 
     def _parse_create(self, stmt: exp.Create, result: SqlParseResult) -> None:
         """解析 CREATE TABLE/VIEW 语句
@@ -198,8 +199,8 @@ class SqlParser:
         if target:
             tgt_name = _table_to_name(target)
             result.target_tables.append({"name": tgt_name, "is_cte": False})
-        if stmt.expression and isinstance(stmt.expression, exp.Select):
-            self._parse_select(stmt.expression, result)
+        if stmt.expression:
+            self._parse_query_expression(stmt.expression, result)
 
     def _extract_ctes(self, stmt) -> None:
         """从语句中提取并注册 CTE
@@ -215,13 +216,62 @@ class SqlParser:
         result = getattr(self, "_current_result", None)
         for cte in ctes:
             cte_name = cte.alias_or_name
-            self._cte_aliases[cte_name] = cte_name
-            if result:
-                result.cte_tables.append({"name": cte_name, "is_cte": True})
-            if cte.this and isinstance(cte.this, exp.Select):
-                self._parse_select(cte.this, result, cte_name=cte_name)
+            if cte.this:
+                self._register_derived_query(cte_name, cte.this, result)
+            else:
+                self._cte_aliases[cte_name] = cte_name
+                if result:
+                    result.cte_tables.append({"name": cte_name, "alias": cte_name, "is_cte": True})
 
-    def _parse_select(self, stmt: exp.Select, result: SqlParseResult | None = None, cte_name: str | None = None) -> None:
+    def _register_derived_query(self, alias: str, query, result: SqlParseResult | None) -> str:
+        """注册 CTE/子查询逻辑身份，相同逻辑与输出字段的 derived query 共用名称"""
+        logical_name, fingerprint = _derived_query_identity(query, self.dialect)
+        self._cte_aliases[alias] = logical_name
+        if result:
+            result.cte_tables.append({
+                "name": logical_name,
+                "alias": alias,
+                "is_cte": True,
+                "logic_fingerprint": fingerprint,
+            })
+        if logical_name not in self._parsed_derived_queries:
+            self._parsed_derived_queries.add(logical_name)
+            self._parse_query_expression(query, result, cte_name=logical_name)
+        return logical_name
+
+    def _parse_query_expression(
+        self,
+        query,
+        result: SqlParseResult | None = None,
+        cte_name: str | None = None,
+        output_names: list[str] | None = None,
+    ) -> None:
+        """解析 SELECT/UNION/子查询表达式"""
+        if result is None:
+            result = getattr(self, "_current_result", None)
+        if result is None or query is None:
+            return
+        if isinstance(query, exp.Select):
+            self._parse_select(query, result, cte_name=cte_name, output_names=output_names)
+            return
+        if isinstance(query, exp.Union):
+            names = output_names or _query_output_names(query.this)
+            self._parse_query_expression(query.this, result, cte_name=cte_name, output_names=names)
+            self._parse_query_expression(query.expression, result, cte_name=cte_name, output_names=names)
+            return
+        if isinstance(query, exp.Subquery):
+            self._parse_query_expression(query.this, result, cte_name=cte_name, output_names=output_names)
+            return
+        for select in query.find_all(exp.Select):
+            self._parse_select(select, result, cte_name=cte_name, output_names=output_names)
+
+    def _parse_select(
+        self,
+        stmt: exp.Select,
+        result: SqlParseResult | None = None,
+        cte_name: str | None = None,
+        output_names: list[str] | None = None,
+    ) -> None:
         """解析 SELECT 语句，提取源表和字段
         
         递归处理子查询时，通过保存和恢复 _current_source_tables 来避免上下文污染
@@ -240,13 +290,19 @@ class SqlParser:
         prev_all = getattr(self, "_current_all_sources", []).copy()
         self._current_source_tables = []
         self._current_all_sources = []
-        for table in stmt.find_all(exp.Table):
-            tname = _table_to_name(table)
-            alias = table.alias_or_name
-            if alias and alias != tname:
-                self._cte_aliases[alias] = tname
-            is_cte = tname in self._cte_aliases
-            already_added = any(t["name"] == tname for t in result.source_tables)
+        for source in _iter_select_sources(stmt):
+            if isinstance(source, exp.Subquery):
+                alias = source.alias_or_name
+                tname = self._register_derived_query(alias, source.this, result)
+                is_cte = True
+            else:
+                raw_name = _table_to_name(source)
+                alias = source.alias_or_name
+                tname = self._cte_aliases.get(raw_name, raw_name)
+                if alias and alias != raw_name:
+                    self._cte_aliases[alias] = tname
+                is_cte = raw_name in self._cte_aliases or tname in self._cte_aliases.values()
+            already_added = any(t["name"] == tname and t.get("alias") == alias for t in result.source_tables)
             already_in_target = any(t["name"] == tname for t in result.target_tables)
             if not already_added and not already_in_target:
                 result.source_tables.append({"name": tname, "alias": alias, "is_cte": is_cte})
@@ -255,13 +311,19 @@ class SqlParser:
             # 解析用的候选源表包含 CTE，保证从 CTE 读取的裸列能绑定到 CTE
             if tname not in self._current_all_sources:
                 self._current_all_sources.append(tname)
-        for union in stmt.find_all(exp.Union):
-            pass
-        self._parse_columns(stmt, result, cte_name)
+        lateral_outputs = _collect_lateral_outputs(stmt)
+        self._parse_columns(stmt, result, cte_name, output_names=output_names, lateral_outputs=lateral_outputs)
         self._current_source_tables = prev_sources
         self._current_all_sources = prev_all
 
-    def _parse_columns(self, stmt: exp.Select, result: SqlParseResult, cte_name: str | None = None) -> None:
+    def _parse_columns(
+        self,
+        stmt: exp.Select,
+        result: SqlParseResult,
+        cte_name: str | None = None,
+        output_names: list[str] | None = None,
+        lateral_outputs: dict[str, dict] | None = None,
+    ) -> None:
         """解析输出字段及其来源
         
         Args:
@@ -276,15 +338,25 @@ class SqlParser:
             schema_registry=self.schema_registry,
             all_sources=getattr(self, "_current_all_sources", None),
         )
-        for sel_expr in selects:
+        lateral_outputs = lateral_outputs or {}
+        for idx, sel_expr in enumerate(selects):
             if isinstance(sel_expr, exp.Star):
                 continue
-            col_name = sel_expr.alias_or_name
+            col_name = (
+                output_names[idx]
+                if output_names and idx < len(output_names) and output_names[idx]
+                else sel_expr.alias_or_name
+            )
             if not col_name:
                 continue
             inner = sel_expr.unalias() if hasattr(sel_expr, "unalias") else sel_expr
-            transform = self._analyze_expression(sel_expr)
-            source_cols = self._extract_source_columns(sel_expr)
+            lateral_match = _lookup_lateral_output_with_suffix(inner, lateral_outputs)
+            lateral_source = lateral_match[0] if lateral_match and not lateral_match[1] else None
+            expanded_inner = _expand_lateral_references(inner, lateral_outputs)
+            lineage_expr = lateral_source["expression"] if lateral_source else expanded_inner
+            dag_expr = lateral_source["expression"] if lateral_source else expanded_inner
+            transform = self._analyze_expression(lineage_expr)
+            source_cols = self._extract_source_columns(lineage_expr, resolver=resolver)
             target_table = cte_name
             if target_table is None and result.target_tables:
                 target_table = result.target_tables[-1]["name"]
@@ -303,12 +375,16 @@ class SqlParser:
                 "expr_nodes": {},
             }
 
-            if expr_dag.is_passthrough(inner):
+            if lateral_source:
+                root_fp, nodes = expr_dag.decompose(dag_expr, resolver.resolve, dialect=self.dialect or None)
+                col_entry["expr_root"] = root_fp
+                col_entry["expr_nodes"] = nodes
+            elif not lateral_match and expr_dag.is_passthrough(inner):
                 # 纯透传列：不建表达式节点，直接记录物理列
                 col_entry["passthrough"] = True
                 col_entry["physical_column"] = resolver.resolve(inner)
             else:
-                root_fp, nodes = expr_dag.decompose(inner, resolver.resolve, dialect=self.dialect or None)
+                root_fp, nodes = expr_dag.decompose(dag_expr, resolver.resolve, dialect=self.dialect or None)
                 col_entry["expr_root"] = root_fp
                 col_entry["expr_nodes"] = nodes
 
@@ -354,7 +430,7 @@ class SqlParser:
             return {"expression": expr_str, "type": "agg"}
         return {"expression": expr_str, "type": "function"}
 
-    def _extract_source_columns(self, expr) -> list[str]:
+    def _extract_source_columns(self, expr, resolver: ColumnResolver | None = None) -> list[str]:
         """提取表达式中引用的源字段
         
         递归查找表达式中的所有 Column 节点，解析为 table.column 格式
@@ -368,6 +444,9 @@ class SqlParser:
         columns = set()
         inner = expr.unalias() if hasattr(expr, "unalias") else expr
         for col in inner.find_all(exp.Column):
+            if resolver:
+                columns.add(resolver.resolve(col))
+                continue
             parts = []
             table_part = col.table
             col_part = col.name
@@ -409,3 +488,118 @@ def _table_to_name(table) -> str:
         parts.append(table.db)
     parts.append(table.name)
     return ".".join(parts)
+
+
+def _query_output_names(query) -> list[str]:
+    """获取查询输出字段名；UNION 使用左侧查询的字段名作为最终输出名"""
+    if isinstance(query, exp.Select):
+        return [expr.alias_or_name for expr in query.expressions if not isinstance(expr, exp.Star)]
+    if isinstance(query, exp.Union):
+        return _query_output_names(query.this)
+    if isinstance(query, exp.Subquery):
+        return _query_output_names(query.this)
+    first_select = next(query.find_all(exp.Select), None) if query is not None else None
+    return _query_output_names(first_select) if first_select is not None else []
+
+
+def _derived_query_identity(query, dialect: str | None) -> tuple[str, str]:
+    """用规范化查询逻辑与输出字段生成 derived query 身份"""
+    canonical = query.sql(dialect=dialect, normalize=True, comments=False)
+    outputs = [_normalize_identifier(name) for name in _query_output_names(query)]
+    key = f"{canonical}||outputs:{','.join(outputs)}"
+    fingerprint = hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
+    return f"subq_{fingerprint}", fingerprint
+
+
+def _normalize_identifier(name: str | None) -> str:
+    return (name or "").strip().strip("`\"").lower()
+
+
+def _iter_select_sources(stmt: exp.Select):
+    """仅遍历当前 SELECT 作用域的直接 FROM/JOIN 来源，避免扫入 CTE 定义内部表"""
+    from_expr = stmt.args.get("from_")
+    if from_expr is not None:
+        source = from_expr.args.get("this")
+        if isinstance(source, (exp.Table, exp.Subquery)):
+            yield source
+    for join in stmt.args.get("joins") or []:
+        source = join.args.get("this")
+        if isinstance(source, (exp.Table, exp.Subquery)):
+            yield source
+
+
+def _collect_lateral_outputs(stmt: exp.Select) -> dict[str, dict]:
+    """收集 LATERAL VIEW explode(...) 产生的列别名"""
+    outputs: dict[str, dict] = {}
+    for lateral in stmt.args.get("laterals") or []:
+        generator = _expand_lateral_references(lateral.this, outputs) if lateral.this is not None else None
+        alias = lateral.args.get("alias")
+        if generator is None or alias is None:
+            continue
+        table_alias = alias.this.name if alias.this is not None else ""
+        columns = [c.name for c in alias.args.get("columns") or [] if getattr(c, "name", "")]
+        if not columns and table_alias:
+            columns = [table_alias]
+        for column in columns:
+            payload = {"expression": generator, "table_alias": table_alias, "column": column}
+            outputs[column] = payload
+            if table_alias:
+                outputs[f"{table_alias}.{column}"] = payload
+    return outputs
+
+
+def _lookup_lateral_output(expr, lateral_outputs: dict[str, dict]) -> dict | None:
+    """判断 SELECT 表达式是否引用 lateral view 产出的列"""
+    match = _lookup_lateral_output_with_suffix(expr, lateral_outputs)
+    return match[0] if match else None
+
+
+def _lookup_lateral_output_with_suffix(expr, lateral_outputs: dict[str, dict]) -> tuple[dict, list[str]] | None:
+    """返回 lateral 产出列及剩余的 struct 访问路径"""
+    if not isinstance(expr, exp.Column):
+        return None
+    parts = _column_part_names(expr)
+    if not parts:
+        return None
+    if len(parts) >= 2:
+        qualified = f"{parts[0]}.{parts[1]}"
+        if qualified in lateral_outputs:
+            return lateral_outputs[qualified], parts[2:]
+    if parts[0] in lateral_outputs:
+        return lateral_outputs[parts[0]], parts[1:]
+    return None
+
+
+def _column_part_names(column: exp.Column) -> list[str]:
+    """获取 Column 的完整分段名，兼容 a.b.c 这类 struct 字段访问"""
+    parts = []
+    for part in column.parts:
+        name = getattr(part, "name", None) or getattr(part, "this", None)
+        if name:
+            parts.append(str(name))
+    return parts
+
+
+def _build_lateral_expression(payload: dict, suffix: list[str]):
+    """将 lateral generator 与剩余 struct 路径组合成可分解表达式"""
+    expr = payload["expression"].copy()
+    for part in suffix:
+        expr = exp.Dot(this=expr, expression=exp.to_identifier(part))
+    return expr
+
+
+def _expand_lateral_references(expr, lateral_outputs: dict[str, dict]):
+    """把表达式中引用的 lateral 产出列替换为其 generator 表达式"""
+    if not lateral_outputs:
+        return expr
+    direct = _lookup_lateral_output_with_suffix(expr, lateral_outputs)
+    if direct:
+        return _build_lateral_expression(*direct)
+
+    def _replace(node):
+        lateral_source = _lookup_lateral_output_with_suffix(node, lateral_outputs)
+        if lateral_source:
+            return _build_lateral_expression(*lateral_source)
+        return node
+
+    return expr.copy().transform(_replace)
