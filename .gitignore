@@ -51,3 +51,4 @@ smoke_result.json
 df.csv
 examples/df.csv
 examples/test/
+.sqlgraph_index/

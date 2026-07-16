@@ -130,6 +130,18 @@ sqlgraph playground
 sqlgraph stats ./sql --dialect spark
 ```
 
+### Lineage Explorer (search + local subgraphs)
+
+For large inputs, avoid one giant HTML file. Serve a searchable explorer instead:
+
+```bash
+sqlgraph serve df.csv --dialect spark
+# builds a JSONL index (reused on next start), then opens:
+#   /search      search tables & columns
+#   /viewer      load a node's 1-hop subgraph (switch to 2/3 hops)
+#   /playground  paste SQL and parse on the fly
+```
+
 ## The demo
 
 The repository ships with a complete, realistic **AdTech ETL pipeline** under

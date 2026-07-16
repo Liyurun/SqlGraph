@@ -95,6 +95,18 @@ sqlgraph playground
 sqlgraph stats ./sql --dialect spark
 ```
 
+### 血缘检索浏览器（检索 + 局部子图）
+
+大规模输入不再依赖单个巨大 HTML，改用可检索的本地浏览器：
+
+```bash
+sqlgraph serve df.csv --dialect spark
+# 首次启动构建 JSONL 索引（后续复用），随后打开：
+#   /search      检索表与字段
+#   /viewer      加载节点的 1 跳子图（可切换 2/3 跳）
+#   /playground  粘贴 SQL 即时解析
+```
+
 ## 示例
 
 仓库自带一套完整、真实的 **AdTech ETL 流水线**，位于
