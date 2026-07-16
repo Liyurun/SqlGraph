@@ -80,3 +80,46 @@ def build_index(
     with open(os.path.join(index_dir, "manifest.json"), "w", encoding="utf-8") as mf:
         json.dump(manifest, mf, ensure_ascii=False, indent=2)
     return manifest
+
+
+def _read_jsonl(path: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    if not os.path.isfile(path):
+        return rows
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    return rows
+
+
+def is_cache_valid(index_dir: str, source_meta: dict[str, Any]) -> bool:
+    """True when a prior index exists and its source fingerprint still matches."""
+    manifest_path = os.path.join(index_dir, "manifest.json")
+    if not os.path.isfile(manifest_path):
+        return False
+    try:
+        with open(manifest_path, encoding="utf-8") as f:
+            manifest = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return False
+    if manifest.get("version") != INDEX_VERSION:
+        return False
+    prev = manifest.get("source", {})
+    return (
+        prev.get("size") == source_meta.get("size")
+        and prev.get("sha1_16") == source_meta.get("sha1_16")
+    )
+
+
+def load_raw_index(index_dir: str) -> dict[str, Any]:
+    """Load manifest + nodes/edges/sql JSONL rows from disk."""
+    with open(os.path.join(index_dir, "manifest.json"), encoding="utf-8") as f:
+        manifest = json.load(f)
+    return {
+        "manifest": manifest,
+        "nodes": _read_jsonl(os.path.join(index_dir, "nodes.jsonl")),
+        "edges": _read_jsonl(os.path.join(index_dir, "edges.jsonl")),
+        "sql": _read_jsonl(os.path.join(index_dir, "sql.jsonl")),
+    }

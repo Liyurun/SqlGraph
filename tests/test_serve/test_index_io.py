@@ -27,3 +27,30 @@ def test_build_index_writes_jsonl_and_manifest(tmp_path):
     with open(os.path.join(index_dir, "nodes.jsonl"), encoding="utf-8") as f:
         first = json.loads(f.readline())
     assert "id" in first and "node_type" in first
+
+
+from sqlgraph.serve.index_io import is_cache_valid, load_raw_index
+
+
+def test_cache_valid_only_when_source_meta_matches(tmp_path):
+    graph = _graph()
+    index_dir = os.path.join(tmp_path, "idx2")
+    meta = {"path": "df.csv", "size": 100, "mtime": 5, "sha1_16": "aaaa"}
+    build_index(graph, index_dir, source_meta=meta)
+
+    assert is_cache_valid(index_dir, meta) is True
+    changed = dict(meta, size=200)
+    assert is_cache_valid(index_dir, changed) is False
+    assert is_cache_valid(os.path.join(tmp_path, "missing"), meta) is False
+
+
+def test_load_raw_index_returns_nodes_edges_sql(tmp_path):
+    graph = _graph()
+    index_dir = os.path.join(tmp_path, "idx3")
+    build_index(graph, index_dir, source_meta={"path": "inline", "size": 0, "mtime": 0, "sha1_16": ""})
+
+    raw = load_raw_index(index_dir)
+    assert len(raw["nodes"]) > 0
+    assert len(raw["edges"]) > 0
+    assert isinstance(raw["sql"], list)
+    assert raw["manifest"]["version"] == 1
