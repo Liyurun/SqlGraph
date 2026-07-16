@@ -1,0 +1,136 @@
+.gitignore
+  s_393de03679057d::t_bd0d6363b15b0c 54 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a58a4d46494a4f82e258b15","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Single":54}]}]}
+README.md
+  s_393de03679057d::t_71e552245f8085 133-144 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a58a4d66494a4f82e258b18","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Range":[133,144]}]}]}
+README.zh-CN.md
+  s_393de03679057d::t_08902a86d9f0c5 98-109 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a58a4d96494a4f82e258b1b","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Range":[98,109]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bab1b232c654e8dc8b1af15f41d7e5be982e55a3",
+  "prompts": {},
+  "sessions": {
+    "s_393de03679057d": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4dc73a10228724f522ba5c",
+        "model": "openrouter-3o__max"
+      },
+      "human_author": "Li Yuruan <1404020204@s.upc.edu.cn>"
+    }
+  },
+  "attestation_metadata": {
+    ".gitignore": [
+      {
+        "hash": "s_393de03679057d::t_bd0d6363b15b0c",
+        "line_ranges": [
+          {
+            "Single": 54
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a58a4d46494a4f82e258b15",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Single": 54
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "README.md": [
+      {
+        "hash": "s_393de03679057d::t_71e552245f8085",
+        "line_ranges": [
+          {
+            "Range": [
+              133,
+              144
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a58a4d66494a4f82e258b18",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Range": [
+                  133,
+                  144
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "README.zh-CN.md": [
+      {
+        "hash": "s_393de03679057d::t_08902a86d9f0c5",
+        "line_ranges": [
+          {
+            "Range": [
+              98,
+              109
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a58a4d96494a4f82e258b1b",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Range": [
+                  98,
+                  109
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_393de03679057d": {
+      "tool": "trae",
+      "conversation_id": "6a4dc73a10228724f522ba5c",
+      "session_id": "6a4dc73a10228724f522ba5c",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_393de03679057d::t_08902a86d9f0c5": {
+      "tool": "trae",
+      "conversation_id": "6a4dc73a10228724f522ba5c",
+      "session_id": "6a4dc73a10228724f522ba5c",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_393de03679057d::t_71e552245f8085": {
+      "tool": "trae",
+      "conversation_id": "6a4dc73a10228724f522ba5c",
+      "session_id": "6a4dc73a10228724f522ba5c",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_393de03679057d::t_bd0d6363b15b0c": {
+      "tool": "trae",
+      "conversation_id": "6a4dc73a10228724f522ba5c",
+      "session_id": "6a4dc73a10228724f522ba5c",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
