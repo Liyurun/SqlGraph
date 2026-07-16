@@ -123,3 +123,29 @@ def load_raw_index(index_dir: str) -> dict[str, Any]:
         "edges": _read_jsonl(os.path.join(index_dir, "edges.jsonl")),
         "sql": _read_jsonl(os.path.join(index_dir, "sql.jsonl")),
     }
+
+
+def prepare_index(
+    input_path: str,
+    base_dir: str,
+    dialect: str | None = None,
+    rebuild: bool = False,
+    log: Optional[Callable[[str], None]] = None,
+) -> str:
+    """Build the JSONL index or reuse a valid cache. Returns the concrete index dir."""
+    from sqlgraph.api import build_graph
+
+    log = log or (lambda _msg: None)
+    meta = source_fingerprint(input_path)
+    target_dir = index_dir_for(base_dir, meta)
+
+    if not rebuild and is_cache_valid(target_dir, meta):
+        log(f"[serve] index cache hit → {target_dir}")
+        return target_dir
+
+    reason = "forced rebuild" if rebuild else "cache miss"
+    log(f"[serve] {reason} → building index")
+    graph = build_graph(input_path, dialect=dialect)
+    build_index(graph, target_dir, source_meta=meta, log=log)
+    log(f"[load]  index ready → {target_dir}")
+    return target_dir

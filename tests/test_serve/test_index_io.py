@@ -54,3 +54,27 @@ def test_load_raw_index_returns_nodes_edges_sql(tmp_path):
     assert len(raw["edges"]) > 0
     assert isinstance(raw["sql"], list)
     assert raw["manifest"]["version"] == 1
+
+
+from sqlgraph.serve.index_io import prepare_index
+
+
+def test_prepare_index_builds_then_reuses(tmp_path):
+    sql_file = os.path.join(tmp_path, "q.sql")
+    with open(sql_file, "w", encoding="utf-8") as f:
+        f.write("INSERT OVERWRITE TABLE dst SELECT id FROM src")
+    base = os.path.join(tmp_path, "index_base")
+
+    logs1: list[str] = []
+    dir1 = prepare_index(sql_file, base, dialect="spark", rebuild=False, log=logs1.append)
+    assert os.path.isfile(os.path.join(dir1, "manifest.json"))
+    assert any("rebuilding" in m or "building" in m for m in logs1)
+
+    logs2: list[str] = []
+    dir2 = prepare_index(sql_file, base, dialect="spark", rebuild=False, log=logs2.append)
+    assert dir2 == dir1
+    assert any("cache hit" in m for m in logs2)
+
+    logs3: list[str] = []
+    prepare_index(sql_file, base, dialect="spark", rebuild=True, log=logs3.append)
+    assert any("rebuild" in m for m in logs3)
