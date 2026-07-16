@@ -1,0 +1,66 @@
+docs/superpowers/specs/2026-07-16-lineage-explorer-design.md
+  s_393de03679057d::t_7bfd6501fa986c 1-256 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5872766494a4f82e258979","tool_type":"agent","tool_id":"Write","line_ranges":[{"Range":[1,256]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8f95d7fbe8a1cbd145fe3224ded0b3a8ca377f6a",
+  "prompts": {},
+  "sessions": {
+    "s_393de03679057d": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4dc73a10228724f522ba5c",
+        "model": "openrouter-3o__max"
+      },
+      "human_author": "Li Yuruan <1404020204@s.upc.edu.cn>"
+    }
+  },
+  "attestation_metadata": {
+    "docs/superpowers/specs/2026-07-16-lineage-explorer-design.md": [
+      {
+        "hash": "s_393de03679057d::t_7bfd6501fa986c",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              256
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5872766494a4f82e258979",
+            "tool_type": "agent",
+            "tool_id": "Write",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  256
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_393de03679057d": {
+      "tool": "trae",
+      "conversation_id": "6a4dc73a10228724f522ba5c",
+      "session_id": "6a4dc73a10228724f522ba5c",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_393de03679057d::t_7bfd6501fa986c": {
+      "tool": "trae",
+      "conversation_id": "6a4dc73a10228724f522ba5c",
+      "session_id": "6a4dc73a10228724f522ba5c",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
