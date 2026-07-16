@@ -1,6 +1,7 @@
 import json
 import os
 import threading
+import urllib.error
 import urllib.request
 
 import pytest
@@ -66,10 +67,16 @@ def test_missing_node_returns_404(server):
 
 
 def test_cli_registers_serve_command():
-    from typer.testing import CliRunner
+    from typer.main import get_command
     from sqlgraph.cli import app
 
-    result = CliRunner().invoke(app, ["serve", "--help"])
-    assert result.exit_code == 0
-    assert "serve" in result.output.lower()
-    assert "--rebuild" in result.output
+    # Introspect the registered command instead of parsing rendered --help text,
+    # which is sensitive to terminal width / rich version (wraps CJK descriptions
+    # and can split "--rebuild" across lines in a no-TTY CI environment).
+    command = get_command(app)
+    assert "serve" in command.commands
+    serve_cmd = command.commands["serve"]
+    option_names = set()
+    for param in serve_cmd.params:
+        option_names.update(getattr(param, "opts", []))
+    assert "--rebuild" in option_names
