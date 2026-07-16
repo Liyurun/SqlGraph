@@ -1,0 +1,37 @@
+<section class="viewer-page">
+  <div class="viewer-toolbar">
+    <label>深度
+      <select id="depth"><option>1</option><option>2</option><option>3</option></select>
+    </label>
+    <label>方向
+      <select id="direction">
+        <option value="both">双向</option>
+        <option value="up">上游</option>
+        <option value="down">下游</option>
+      </select>
+    </label>
+    <button id="reload">刷新</button>
+  </div>
+  <div id="cy"></div>
+  <aside id="detail" class="detail"></aside>
+</section>
+<script>
+const params = new URLSearchParams(location.search);
+let rootId = params.get('node_id');
+async function loadSubgraph(){
+  if(!rootId){ document.getElementById('detail').innerHTML = '从检索页选择一个节点开始。'; return; }
+  const depth = document.getElementById('depth').value;
+  const direction = document.getElementById('direction').value;
+  const res = await fetch(`/api/subgraph?node_id=${encodeURIComponent(rootId)}&depth=${depth}&direction=${direction}`);
+  const data = await res.json();
+  window.renderGraph(data);
+  const detail = await (await fetch(`/api/node/${encodeURIComponent(rootId)}`)).json();
+  window.renderDetail(detail);
+}
+document.getElementById('reload').addEventListener('click', loadSubgraph);
+window.onGraphNodeTap = async (nodeId) => {
+  const detail = await (await fetch(`/api/node/${encodeURIComponent(nodeId)}`)).json();
+  window.renderDetail(detail);
+};
+loadSubgraph();
+</script>

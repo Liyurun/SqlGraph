@@ -1,0 +1,26 @@
+<section class="playground-page">
+  <div class="pg-input">
+    <textarea id="sql" placeholder="输入 SQL..."></textarea>
+    <button id="parse">解析</button>
+    <div id="msg"></div>
+  </div>
+  <div id="cy"></div>
+  <aside id="detail" class="detail"></aside>
+</section>
+<script>
+document.getElementById('parse').addEventListener('click', async () => {
+  const sql = document.getElementById('sql').value.trim();
+  const msg = document.getElementById('msg');
+  if(!sql){ msg.textContent='请输入 SQL'; return; }
+  msg.textContent='解析中...';
+  const res = await fetch('/api/parse', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({sql, dialect:'spark'})
+  });
+  const data = await res.json();
+  if(!data.ok){ msg.textContent = data.error || '解析失败'; return; }
+  msg.textContent = `节点 ${data.elementCount.nodes} · 边 ${data.elementCount.edges}`;
+  window.renderGraph({elements: data.elements});
+});
+window.onGraphNodeTap = (nodeId) => {};
+</script>

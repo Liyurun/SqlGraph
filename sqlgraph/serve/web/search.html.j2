@@ -1,0 +1,29 @@
+<section class="search-page">
+  <div class="search-bar">
+    <input id="q" type="text" placeholder="搜索表名或字段名...">
+    <select id="type">
+      <option value="all">全部</option>
+      <option value="table">表</option>
+      <option value="column">字段</option>
+    </select>
+  </div>
+  <div id="results" class="results"></div>
+</section>
+<script>
+const results = document.getElementById('results');
+async function runSearch(){
+  const q = document.getElementById('q').value.trim();
+  const type = document.getElementById('type').value;
+  if(!q){ results.innerHTML=''; return; }
+  const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=${type}&limit=50`);
+  const data = await res.json();
+  results.innerHTML = (data.hits||[]).map(h =>
+    `<a class="hit" href="/viewer?node_id=${encodeURIComponent(h.id)}">
+       <span class="hit-type ${h.type}">${h.type}</span>
+       <span class="hit-name">${h.fullName||h.name}</span>
+       <span class="hit-sql">SQL ${h.sqlCount||0}</span>
+     </a>`).join('') || '<div class="empty">无匹配结果</div>';
+}
+document.getElementById('q').addEventListener('input', runSearch);
+document.getElementById('type').addEventListener('change', runSearch);
+</script>
