@@ -262,6 +262,33 @@ def playground(
 
 
 @app.command()
+def serve(
+    input_path: str = typer.Argument(
+        ...,
+        help="SQL 文件、目录或 df.csv 路径。启动时会解析并构建 JSONL 索引。",
+    ),
+    host: str = typer.Option("127.0.0.1", "--host", help="服务监听地址。"),
+    port: int = typer.Option(8770, "--port", help="服务端口。传 0 时自动寻找可用端口。"),
+    dialect: Optional[str] = typer.Option(None, "--dialect", help="SQL 方言，不指定则自动检测。"),
+    rebuild: bool = typer.Option(False, "--rebuild", help="强制重建索引，忽略缓存。"),
+    index_dir: str = typer.Option(".sqlgraph_index", "--index-dir", help="索引缓存目录。"),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="启动后是否自动打开浏览器。"),
+):
+    """启动本地血缘检索浏览器（检索 / 图谱查看 / 在线解析）"""
+    from sqlgraph.serve import serve_explorer
+
+    serve_explorer(
+        input_path=input_path,
+        host=host,
+        port=port,
+        dialect=dialect,
+        rebuild=rebuild,
+        index_dir=index_dir,
+        open_browser=open_browser,
+    )
+
+
+@app.command()
 def demo(
     output: str = typer.Option(
         "./demo_output",

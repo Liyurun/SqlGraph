@@ -63,3 +63,13 @@ def test_missing_node_returns_404(server):
     with pytest.raises(urllib.error.HTTPError) as exc:
         _get(f"{base}/api/node/nope")
     assert exc.value.code == 404
+
+
+def test_cli_registers_serve_command():
+    from typer.testing import CliRunner
+    from sqlgraph.cli import app
+
+    result = CliRunner().invoke(app, ["serve", "--help"])
+    assert result.exit_code == 0
+    assert "serve" in result.output.lower()
+    assert "--rebuild" in result.output
