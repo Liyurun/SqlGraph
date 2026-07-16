@@ -69,3 +69,109 @@ class GraphIndex:
             for key in keys:
                 if key:
                     self.name_index.setdefault(key.strip().lower(), []).append(nid)
+
+    _PREVIEW_LEN = 160
+
+    def search(self, q: str, entity_type: str = "all", limit: int = 50) -> list[dict[str, Any]]:
+        """Case-insensitive substring search over table and column names only."""
+        term = (q or "").strip().lower()
+        if not term:
+            return []
+        seen: set[str] = set()
+        hits: list[dict[str, Any]] = []
+        for key, node_ids in self.name_index.items():
+            if term not in key:
+                continue
+            for nid in node_ids:
+                if nid in seen:
+                    continue
+                node = self.nodes[nid]
+                ntype = node.get("node_type")
+                if entity_type != "all" and ntype != entity_type:
+                    continue
+                seen.add(nid)
+                hits.append({
+                    "id": nid,
+                    "type": ntype,
+                    "name": node.get("name"),
+                    "fullName": node.get("full_name") or node.get("name"),
+                    "tableId": node.get("table_id"),
+                    "sqlCount": len(self.table_write_sqls.get(nid, []))
+                    + len(self.table_read_sqls.get(nid, [])),
+                })
+                if len(hits) >= limit:
+                    return hits
+        return hits
+
+    def subgraph(self, node_id: str, depth: int = 1, direction: str = "both") -> dict[str, Any]:
+        """BFS neighborhood around node_id up to `depth` hops in `direction`."""
+        if node_id not in self.nodes:
+            return {"nodes": [], "edges": []}
+        depth = max(1, min(int(depth), 3))
+        visited = {node_id}
+        frontier = [node_id]
+        for _ in range(depth):
+            nxt: list[str] = []
+            for nid in frontier:
+                adj = self.adjacency.get(nid, {"in": [], "out": []})
+                neighbors: list[str] = []
+                if direction in ("down", "both"):
+                    neighbors += adj["out"]
+                if direction in ("up", "both"):
+                    neighbors += adj["in"]
+                for nb in neighbors:
+                    if nb not in visited:
+                        visited.add(nb)
+                        nxt.append(nb)
+            frontier = nxt
+            if not frontier:
+                break
+        nodes = [self._node_view(nid) for nid in visited]
+        edges = [
+            e for e in self.edges
+            if e.get("source") in visited and e.get("target") in visited
+        ]
+        return {"nodes": nodes, "edges": edges}
+
+    def _node_view(self, nid: str) -> dict[str, Any]:
+        node = dict(self.nodes[nid])
+        if node.get("node_type") == "table":
+            node["writeSqlCount"] = len(self.table_write_sqls.get(nid, []))
+            node["readSqlCount"] = len(self.table_read_sqls.get(nid, []))
+        return node
+
+    def _sql_summaries(self, sql_ids: list[str]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for sid in sql_ids:
+            sql = self.sql_by_id.get(sid, {})
+            content = sql.get("sql_content") or ""
+            preview = " ".join(content.split())[: self._PREVIEW_LEN]
+            out.append({
+                "sqlId": sid,
+                "name": sql.get("name"),
+                "sourceUri": sql.get("source_uri") or sql.get("file_path"),
+                "preview": preview,
+            })
+        return out
+
+    def node_detail(self, node_id: str) -> dict[str, Any] | None:
+        node = self.nodes.get(node_id)
+        if node is None:
+            return None
+        columns = []
+        if node.get("node_type") == "table":
+            columns = [
+                {"id": nid, "name": self.nodes[nid].get("name")}
+                for nid in self.adjacency.get(node_id, {}).get("out", [])
+                if self.nodes.get(nid, {}).get("node_type") == "column"
+                and self.nodes[nid].get("table_id") == node_id
+            ]
+        return {
+            "node": self._node_view(node_id),
+            "writeSqls": self._sql_summaries(self.table_write_sqls.get(node_id, [])),
+            "readSqls": self._sql_summaries(self.table_read_sqls.get(node_id, [])),
+            "columns": columns,
+        }
+
+    def sql_detail(self, sql_id: str) -> dict[str, Any] | None:
+        return self.sql_by_id.get(sql_id)
