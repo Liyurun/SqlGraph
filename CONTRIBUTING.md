@@ -15,6 +15,7 @@ respectfully, and helps you get your change merged with less back-and-forth.
 - [Running tests](#running-tests)
 - [Your first contribution](#your-first-contribution)
 - [Submitting a change (pull requests)](#submitting-a-change-pull-requests)
+- [Contributor License Agreement](#contributor-license-agreement)
 - [Commit message conventions](#commit-message-conventions)
 - [Reporting bugs](#reporting-bugs)
 - [Reporting a security vulnerability](#reporting-a-security-vulnerability)
@@ -126,6 +127,17 @@ For anything bigger than a one- or two-line fix:
 **Obvious fixes** — spelling/grammar, typos, whitespace/formatting, comment
 cleanup, or changes to metadata files like `.gitignore` — do not need a prior
 issue and can go straight to a PR.
+
+## Contributor License Agreement
+
+Before a pull request can be accepted, contributors may be asked to sign the
+[ByteDance Contributor License Agreement v1.1](CLA.md). The CLA clarifies the
+intellectual property license granted with contributions and protects both
+contributors and project users.
+
+If you are contributing on your own behalf, sign the individual CLA through the
+project's CLA flow. If you are contributing on behalf of a company or other
+legal entity, follow the corporate CLA instructions in [CLA.md](CLA.md).
 
 ## Commit message conventions
 
