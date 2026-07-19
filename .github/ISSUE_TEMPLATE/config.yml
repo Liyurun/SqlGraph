@@ -1,8 +1,0 @@
-blank_issues_enabled: false
-contact_links:
-  - name: Questions & usage help
-    url: https://github.com/Liyurun/SqlGraph/discussions
-    about: Please ask general "how do I…" questions in Discussions, not the issue tracker.
-  - name: Report a security vulnerability
-    url: https://github.com/Liyurun/SqlGraph/blob/main/SECURITY.md
-    about: Do NOT open a public issue for security problems. Follow the private disclosure process.
