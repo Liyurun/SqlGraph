@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
+# SPDX-License-Identifier: Apache-2.0
+
 """一键运行 AdTech 示例：解析所有 SQL 并生成可视化 HTML"""
 import os
 import sys

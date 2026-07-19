@@ -1,3 +1,6 @@
+// Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
+// SPDX-License-Identifier: Apache-2.0
+
 // Shared detail panel with per-table read/write SQL groups (lazy full text).
 (function(){
   function esc(s){ const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }

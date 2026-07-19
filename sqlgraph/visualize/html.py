@@ -1,3 +1,6 @@
+# Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
+# SPDX-License-Identifier: Apache-2.0
+
 # sqlgraph/visualize/html.py
 """
 Cytoscape.js 知识图谱风格交互式 HTML 可视化生成模块。

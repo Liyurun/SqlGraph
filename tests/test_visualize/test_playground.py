@@ -1,3 +1,6 @@
+# Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
+# SPDX-License-Identifier: Apache-2.0
+
 """Playground 展示语义回归测试。"""
 
 from sqlgraph.playground import PLAYGROUND_HTML, graph_to_playground_payload
