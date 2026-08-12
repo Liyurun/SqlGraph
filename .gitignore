@@ -32,10 +32,13 @@ ENV/
 *.swo
 *~
 .DS_Store
+*.log
 
 # Editor / IDE agent workspaces
 .trae/
 .superpowers/
+.bytefaas_home/
+.tools/
 
 # Generated visualization output
 demo_output/
@@ -51,4 +54,17 @@ smoke_result.json
 df.csv
 examples/df.csv
 examples/test/
+examples/table_ddl.csv
 .sqlgraph_index/
+success_case.yml
+span.log
+
+# Internal-only: sensitive-info audit tooling and reports (never publish)
+.opensource-audit/
+deploy/tce/
+docs/opensource-application.md
+docs/patent-disclosure.md
+docs/superpowers/
+scripts/graph_regression_check.py
+opensource_git_commit.log
+sensitive_info_result.txt

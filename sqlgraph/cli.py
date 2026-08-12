@@ -1,13 +1,15 @@
 # Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 
 # sqlgraph/cli.py
 """
 SQLGraph 命令行接口（CLI）模块。
 
-基于 Typer 框架实现，提供四个主要子命令：
+基于 Typer 框架实现，提供多个主要子命令：
   - build: 构建 SQL 血缘图并输出指定格式（CSV/GraphRAG/HTML/JSON）
   - stats: 仅解析 SQL 并输出统计信息，不生成输出文件
+  - analyze: 对已生成 graph.json 运行离线治理分析并输出快照
+  - profile: 运行离线治理分析并额外生成 dashboard.json 画像
   - playground: 启动本地页面，输入 SQL 后即时生成图谱
   - demo: 运行内置示例（广告素材管道）并自动打开浏览器
 
@@ -22,10 +24,12 @@ SQLGraph 命令行接口（CLI）模块。
 """
 from __future__ import annotations
 
+from dataclasses import fields
+import json
 import os
 import sys
 import time
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 import typer
 from rich.console import Console
@@ -48,6 +52,29 @@ app = typer.Typer(
 
 # 创建 Rich 控制台实例，用于美化终端输出
 console = Console()
+
+_VALID_ANALYZE_METRICS = {
+    "all",
+    "inventory",
+    "basic",
+    "overview",
+    "field_lineage",
+    "lineage",
+    "sql_complexity",
+    "sql",
+    "complexity",
+    "topology",
+    "impact",
+    "communities",
+    "community",
+    "consistency",
+    "similarity",
+    "embedding",
+    "embeddings",
+    "motifs",
+    "anomaly",
+    "anomalies",
+}
 
 
 @app.command()
@@ -291,6 +318,399 @@ def serve(
     )
 
 
+@app.command("serve-graph")
+def serve_graph(
+    graph: str = typer.Argument(
+        ...,
+        help="已生成的 graph.json 路径。启动时只构建/复用 Explorer JSONL 索引，不重新解析 SQL。",
+    ),
+    host: str = typer.Option("127.0.0.1", "--host", help="服务监听地址。"),
+    port: int = typer.Option(8770, "--port", help="服务端口。传 0 时自动寻找可用端口。"),
+    rebuild: bool = typer.Option(False, "--rebuild", help="强制重建索引，忽略缓存。"),
+    index_dir: str = typer.Option(".sqlgraph_index", "--index-dir", help="索引缓存目录。"),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="启动后是否自动打开浏览器。"),
+):
+    """从离线 graph.json 启动本地血缘检索浏览器"""
+    from sqlgraph.serve import serve_graph_explorer
+
+    serve_graph_explorer(
+        graph_json_path=graph,
+        host=host,
+        port=port,
+        rebuild=rebuild,
+        index_dir=index_dir,
+        open_browser=open_browser,
+    )
+
+
+@app.command("serve-index")
+def serve_index(
+    index: str = typer.Argument(
+        ...,
+        help="已预构建的 Explorer JSONL 索引目录，需包含 manifest.json、nodes.jsonl、edges.jsonl、sql.jsonl。",
+    ),
+    host: str = typer.Option("127.0.0.1", "--host", help="服务监听地址。"),
+    port: int = typer.Option(8770, "--port", help="服务端口。传 0 时自动寻找可用端口。"),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="启动后是否自动打开浏览器。"),
+):
+    """从预构建 JSONL 索引目录启动本地血缘检索浏览器"""
+    from sqlgraph.serve import serve_index_explorer
+
+    serve_index_explorer(
+        prepared_index_dir=index,
+        host=host,
+        port=port,
+        open_browser=open_browser,
+    )
+
+
+@app.command("analyze")
+def analyze(
+    graph: str = typer.Argument(
+        ...,
+        help="已生成的 graph.json 路径，格式需包含 nodes 和 edges 列表。",
+    ),
+    output: str = typer.Option(
+        "./sqlgraph_analysis",
+        "-o",
+        "--output",
+        help="治理分析输出目录。将写入 manifest、summary、JSONL 和 CSV 快照。",
+    ),
+    config_file: Optional[str] = typer.Option(
+        None,
+        "--config",
+        help="JSON 配置文件路径。字段与 AnalysisConfig/ResourceBudget 保持一致。",
+    ),
+    schema: Optional[str] = typer.Option(
+        None,
+        "--schema",
+        help="外部 schema.csv 路径，用于资产覆盖率口径。",
+    ),
+    diagnostics: Optional[str] = typer.Option(
+        None,
+        "--diagnostics",
+        help="解析诊断 JSON 文件路径，支持对象或对象数组。",
+    ),
+    metrics: Optional[str] = typer.Option(
+        None,
+        "--metrics",
+        help="逗号分隔的指标集合，例如 basic,topology,impact。默认使用配置或 all。",
+    ),
+    cache_dir: Optional[str] = typer.Option(
+        None,
+        "--cache-dir",
+        help="分析缓存目录。传入后会复用投影和快照缓存。",
+    ),
+    seed: Optional[int] = typer.Option(
+        None,
+        "--seed",
+        help="随机算法种子，覆盖配置文件 random_seed。",
+    ),
+    precision: Optional[int] = typer.Option(
+        None,
+        "--precision",
+        help="浮点输出精度，覆盖配置文件 float_precision。",
+    ),
+    community_backend: Optional[str] = typer.Option(
+        None,
+        "--community-backend",
+        help="社区发现后端：label_propagation、louvain 或 leiden。",
+    ),
+    graph_backend: Optional[str] = typer.Option(
+        None,
+        "--graph-backend",
+        help="图算法后端，例如 auto 或 networkx。",
+    ),
+    fail_fast: bool = typer.Option(
+        False,
+        "--fail-fast",
+        help="非关键指标失败时立即失败，而不是记录 failed 后继续。",
+    ),
+    max_nodes: Optional[int] = typer.Option(
+        None,
+        "--max-nodes",
+        help="资源预算：最大节点数。",
+    ),
+    max_edges: Optional[int] = typer.Option(
+        None,
+        "--max-edges",
+        help="资源预算：最大边数。",
+    ),
+    max_memory_mb: Optional[int] = typer.Option(
+        None,
+        "--max-memory-mb",
+        help="资源预算：最大内存 MB。",
+    ),
+    timeout_seconds: Optional[int] = typer.Option(
+        None,
+        "--timeout-seconds",
+        help="资源预算：最长运行秒数。",
+    ),
+    exact_algorithm_max_nodes: Optional[int] = typer.Option(
+        None,
+        "--exact-algorithm-max-nodes",
+        help="资源预算：精确算法最大节点数。",
+    ),
+    betweenness_samples: Optional[int] = typer.Option(
+        None,
+        "--betweenness-samples",
+        help="资源预算：近似 Betweenness 采样数。",
+    ),
+    similarity_candidates_per_node: Optional[int] = typer.Option(
+        None,
+        "--similarity-candidates-per-node",
+        help="资源预算：每个节点保留的相似候选数。",
+    ),
+    top_k_removal_simulation: Optional[int] = typer.Option(
+        None,
+        "--top-k-removal-simulation",
+        help="资源预算：删除模拟 Top-K 候选数。",
+    ),
+):
+    """运行离线治理分析快照
+
+    输入为 `build --format json` 生成的 graph.json，输出治理分析 manifest、
+    summary、表/字段/SQL/Transform 指标、违规、社区矩阵、相似候选、Motif 和异常分。
+
+    示例:
+        sqlgraph analyze ./sqlgraph_output/graph.json -o ./analysis --metrics basic,topology
+        sqlgraph analyze ./graph.json --config ./analysis_config.json --cache-dir ./.analysis_cache
+    """
+    graph_path = os.path.abspath(graph)
+    if not os.path.isfile(graph_path):
+        console.print(f"[red]✗[/red] graph input file not found: {graph}")
+        raise typer.Exit(2)
+    if os.path.exists(output) and not os.path.isdir(output):
+        console.print(f"[red]✗[/red] output path is not a directory: {output}")
+        raise typer.Exit(2)
+
+    budget_overrides = {
+        "max_nodes": max_nodes,
+        "max_edges": max_edges,
+        "max_memory_mb": max_memory_mb,
+        "timeout_seconds": timeout_seconds,
+        "exact_algorithm_max_nodes": exact_algorithm_max_nodes,
+        "betweenness_samples": betweenness_samples,
+        "similarity_candidates_per_node": similarity_candidates_per_node,
+        "top_k_removal_simulation": top_k_removal_simulation,
+    }
+    try:
+        config = _build_analysis_config(
+            config_file=config_file,
+            metrics=metrics,
+            seed=seed,
+            precision=precision,
+            community_backend=community_backend,
+            graph_backend=graph_backend,
+            fail_fast=fail_fast,
+            budget_overrides={
+                name: value
+                for name, value in budget_overrides.items()
+                if value is not None
+            },
+        )
+        parse_diagnostics = _load_optional_json(diagnostics, "diagnostics")
+        from sqlgraph.analyze.pipeline import run_governance_analysis
+
+        with console.status("[bold green]Running governance analysis..."):
+            snapshot = run_governance_analysis(
+                graph_path,
+                config=config,
+                external_schema=schema,
+                parse_diagnostics=parse_diagnostics,
+                output_dir=output,
+                cache_dir=cache_dir,
+            )
+    except (OSError, TypeError, ValueError) as exc:
+        console.print(f"[red]✗[/red] invalid analyze input: {exc}")
+        raise typer.Exit(2)
+    except RuntimeError as exc:
+        console.print(f"[red]✗[/red] governance analysis failed: {exc}")
+        raise typer.Exit(1)
+    except Exception as exc:
+        console.print(f"[red]✗[/red] unexpected governance analysis failure: {exc}")
+        raise typer.Exit(1)
+
+    _print_analysis_summary(snapshot, output)
+
+
+@app.command("profile")
+def profile(
+    graph: str = typer.Argument(
+        ...,
+        help="已生成的 graph.json 路径，格式需包含 nodes 和 edges 列表。",
+    ),
+    output: str = typer.Option(
+        "./warehouse_profile",
+        "-o",
+        "--output",
+        help="画像输出目录。将写入治理分析产物和 dashboard.json。",
+    ),
+    config_file: Optional[str] = typer.Option(
+        None,
+        "--config",
+        help="JSON 配置文件路径。字段与 AnalysisConfig/ResourceBudget 保持一致。",
+    ),
+    schema: Optional[str] = typer.Option(
+        None,
+        "--schema",
+        help="外部 schema.csv 路径，用于资产覆盖率口径。",
+    ),
+    diagnostics: Optional[str] = typer.Option(
+        None,
+        "--diagnostics",
+        help="解析诊断 JSON 文件路径，支持对象或对象数组。",
+    ),
+    metrics: Optional[str] = typer.Option(
+        None,
+        "--metrics",
+        help="逗号分隔的指标集合，例如 basic,topology,impact。默认使用配置或 all。",
+    ),
+    cache_dir: Optional[str] = typer.Option(
+        None,
+        "--cache-dir",
+        help="分析缓存目录。传入后会复用投影和快照缓存。",
+    ),
+    seed: Optional[int] = typer.Option(
+        None,
+        "--seed",
+        help="随机算法种子，覆盖配置文件 random_seed。",
+    ),
+    precision: Optional[int] = typer.Option(
+        None,
+        "--precision",
+        help="浮点输出精度，覆盖配置文件 float_precision。",
+    ),
+    community_backend: Optional[str] = typer.Option(
+        None,
+        "--community-backend",
+        help="社区发现后端：label_propagation、louvain 或 leiden。",
+    ),
+    graph_backend: Optional[str] = typer.Option(
+        None,
+        "--graph-backend",
+        help="图算法后端，例如 auto 或 networkx。",
+    ),
+    fail_fast: bool = typer.Option(
+        False,
+        "--fail-fast",
+        help="非关键指标失败时立即失败，而不是记录 failed 后继续。",
+    ),
+    max_nodes: Optional[int] = typer.Option(
+        None,
+        "--max-nodes",
+        help="资源预算：最大节点数。",
+    ),
+    max_edges: Optional[int] = typer.Option(
+        None,
+        "--max-edges",
+        help="资源预算：最大边数。",
+    ),
+    max_memory_mb: Optional[int] = typer.Option(
+        None,
+        "--max-memory-mb",
+        help="资源预算：最大内存 MB。",
+    ),
+    timeout_seconds: Optional[int] = typer.Option(
+        None,
+        "--timeout-seconds",
+        help="资源预算：最长运行秒数。",
+    ),
+    exact_algorithm_max_nodes: Optional[int] = typer.Option(
+        None,
+        "--exact-algorithm-max-nodes",
+        help="资源预算：精确算法最大节点数。",
+    ),
+    betweenness_samples: Optional[int] = typer.Option(
+        None,
+        "--betweenness-samples",
+        help="资源预算：近似 Betweenness 采样数。",
+    ),
+    similarity_candidates_per_node: Optional[int] = typer.Option(
+        None,
+        "--similarity-candidates-per-node",
+        help="资源预算：每个节点保留的相似候选数。",
+    ),
+    top_k_removal_simulation: Optional[int] = typer.Option(
+        None,
+        "--top-k-removal-simulation",
+        help="资源预算：删除模拟 Top-K 候选数。",
+    ),
+    top_n: int = typer.Option(
+        20,
+        "--top-n",
+        help="dashboard.json 中每类列表保留的 Top-N 数量。",
+    ),
+):
+    """运行离线数仓治理画像并生成 dashboard.json。
+
+    `profile` 是 `analyze` 的展示层封装：它复用治理分析管线写出标准快照，
+    再生成供 Explorer `/stats` 读取的紧凑 dashboard.json。
+    """
+    graph_path = os.path.abspath(graph)
+    if not os.path.isfile(graph_path):
+        console.print(f"[red]✗[/red] graph input file not found: {graph}")
+        raise typer.Exit(2)
+    if os.path.exists(output) and not os.path.isdir(output):
+        console.print(f"[red]✗[/red] output path is not a directory: {output}")
+        raise typer.Exit(2)
+    if top_n <= 0:
+        console.print("[red]✗[/red] --top-n must be greater than zero")
+        raise typer.Exit(2)
+
+    budget_overrides = {
+        "max_nodes": max_nodes,
+        "max_edges": max_edges,
+        "max_memory_mb": max_memory_mb,
+        "timeout_seconds": timeout_seconds,
+        "exact_algorithm_max_nodes": exact_algorithm_max_nodes,
+        "betweenness_samples": betweenness_samples,
+        "similarity_candidates_per_node": similarity_candidates_per_node,
+        "top_k_removal_simulation": top_k_removal_simulation,
+    }
+    try:
+        config = _build_analysis_config(
+            config_file=config_file,
+            metrics=metrics,
+            seed=seed,
+            precision=precision,
+            community_backend=community_backend,
+            graph_backend=graph_backend,
+            fail_fast=fail_fast,
+            budget_overrides={
+                name: value
+                for name, value in budget_overrides.items()
+                if value is not None
+            },
+        )
+        parse_diagnostics = _load_optional_json(diagnostics, "diagnostics")
+        from sqlgraph.analyze.pipeline import run_governance_analysis
+        from sqlgraph.analyze.profile import write_profile_output
+
+        with console.status("[bold green]Running warehouse profile..."):
+            snapshot = run_governance_analysis(
+                graph_path,
+                config=config,
+                external_schema=schema,
+                parse_diagnostics=parse_diagnostics,
+                output_dir=output,
+                cache_dir=cache_dir,
+            )
+            written = write_profile_output(snapshot, output, top_n=top_n)
+    except (OSError, TypeError, ValueError) as exc:
+        console.print(f"[red]✗[/red] invalid profile input: {exc}")
+        raise typer.Exit(2)
+    except RuntimeError as exc:
+        console.print(f"[red]✗[/red] warehouse profile failed: {exc}")
+        raise typer.Exit(1)
+    except Exception as exc:
+        console.print(f"[red]✗[/red] unexpected warehouse profile failure: {exc}")
+        raise typer.Exit(1)
+
+    _print_analysis_summary(snapshot, output)
+    console.print(f"[green]✓[/green] 画像生成完成: {written['dashboard']}")
+
+
 @app.command()
 def demo(
     output: str = typer.Option(
@@ -373,6 +793,181 @@ def _get_demo_dir() -> Optional[str]:
         if os.path.isdir(c):
             return os.path.abspath(c)
     return None
+
+
+def _build_analysis_config(
+    *,
+    config_file: Optional[str],
+    metrics: Optional[str],
+    seed: Optional[int],
+    precision: Optional[int],
+    community_backend: Optional[str],
+    graph_backend: Optional[str],
+    fail_fast: bool,
+    budget_overrides: Mapping[str, int],
+):
+    from sqlgraph.analyze.config import AnalysisConfig, ResourceBudget
+
+    raw_config: dict[str, Any] = {}
+    if config_file is not None:
+        raw_config = _load_json_object(config_file, "config")
+
+    config_fields = {field.name for field in fields(AnalysisConfig)}
+    budget_fields = {field.name for field in fields(ResourceBudget)}
+    resource_payload = raw_config.pop("resource_budget", {})
+    if resource_payload is None:
+        resource_payload = {}
+    if not isinstance(resource_payload, Mapping):
+        raise ValueError("resource_budget must be a JSON object")
+
+    unknown_config = sorted(set(raw_config) - config_fields)
+    if unknown_config:
+        raise ValueError(f"unknown AnalysisConfig keys: {', '.join(unknown_config)}")
+    unknown_budget = sorted(set(resource_payload) - budget_fields)
+    if unknown_budget:
+        raise ValueError(f"unknown ResourceBudget keys: {', '.join(unknown_budget)}")
+    unknown_budget_overrides = sorted(set(budget_overrides) - budget_fields)
+    if unknown_budget_overrides:
+        raise ValueError(
+            f"unknown ResourceBudget overrides: {', '.join(unknown_budget_overrides)}"
+        )
+
+    raw_config = _normalize_analysis_config_payload(raw_config)
+    if metrics is not None:
+        raw_config["metrics"] = _parse_analyze_metrics(metrics)
+    elif "metrics" in raw_config:
+        raw_config["metrics"] = _validate_metric_names(
+            tuple(str(item).strip().lower() for item in raw_config["metrics"])
+        )
+    if seed is not None:
+        raw_config["random_seed"] = seed
+    if precision is not None:
+        raw_config["float_precision"] = precision
+    if community_backend is not None:
+        raw_config["community_backend"] = community_backend
+    if graph_backend is not None:
+        raw_config["graph_backend"] = graph_backend
+    if fail_fast:
+        raw_config["allow_degraded"] = False
+
+    budget_data = dict(resource_payload)
+    budget_data.update(budget_overrides)
+    return AnalysisConfig(
+        **raw_config,
+        resource_budget=ResourceBudget(**budget_data),
+    )
+
+
+def _normalize_analysis_config_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    normalized = dict(payload)
+    if "metrics" in normalized:
+        metrics_value = normalized["metrics"]
+        if isinstance(metrics_value, str):
+            normalized["metrics"] = _parse_analyze_metrics(metrics_value)
+        elif isinstance(metrics_value, list):
+            normalized["metrics"] = tuple(str(item) for item in metrics_value)
+        else:
+            raise ValueError("metrics must be a string or array of strings")
+    if "algorithm_versions" in normalized:
+        versions = normalized["algorithm_versions"]
+        if isinstance(versions, Mapping):
+            normalized["algorithm_versions"] = tuple(
+                (str(name), str(version))
+                for name, version in sorted(versions.items())
+            )
+        elif isinstance(versions, list):
+            normalized["algorithm_versions"] = tuple(
+                _tuple_of_strings(item, "algorithm_versions", 2)
+                for item in versions
+            )
+        else:
+            raise ValueError("algorithm_versions must be an object or array")
+    for name, width in (
+        ("layer_patterns", 2),
+        ("layer_violation_rules", 4),
+    ):
+        if name in normalized:
+            value = normalized[name]
+            if not isinstance(value, list):
+                raise ValueError(f"{name} must be an array")
+            normalized[name] = tuple(
+                _tuple_of_strings(item, name, width)
+                for item in value
+            )
+    if "metric_candidate_patterns" in normalized:
+        value = normalized["metric_candidate_patterns"]
+        if not isinstance(value, list):
+            raise ValueError("metric_candidate_patterns must be an array")
+        normalized["metric_candidate_patterns"] = tuple(str(item) for item in value)
+    return normalized
+
+
+def _tuple_of_strings(value: Any, field_name: str, width: int) -> tuple[str, ...]:
+    if not isinstance(value, (list, tuple)) or len(value) != width:
+        raise ValueError(f"{field_name} entries must contain {width} values")
+    return tuple(str(item) for item in value)
+
+
+def _parse_analyze_metrics(raw: str) -> tuple[str, ...]:
+    metrics = tuple(
+        item.strip().lower()
+        for item in raw.split(",")
+        if item.strip()
+    )
+    return _validate_metric_names(metrics)
+
+
+def _validate_metric_names(metrics: tuple[str, ...]) -> tuple[str, ...]:
+    if not metrics:
+        raise ValueError("metrics must contain at least one metric name")
+    invalid = sorted(set(metrics) - _VALID_ANALYZE_METRICS)
+    if invalid:
+        raise ValueError(
+            f"unknown metrics: {', '.join(invalid)}; "
+            f"valid metrics: {', '.join(sorted(_VALID_ANALYZE_METRICS))}"
+        )
+    return metrics
+
+
+def _load_json_object(path: str, label: str) -> dict[str, Any]:
+    payload = _load_optional_json(path, label)
+    if not isinstance(payload, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    return payload
+
+
+def _load_optional_json(path: Optional[str], label: str) -> Any:
+    if path is None:
+        return None
+    if not os.path.isfile(path):
+        raise ValueError(f"{label} file not found: {path}")
+    try:
+        with open(path, "r", encoding="utf-8") as stream:
+            return json.load(stream)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{label} is not valid JSON: {exc}") from exc
+
+
+def _print_analysis_summary(snapshot, output: str) -> None:
+    manifest = snapshot.manifest
+    table = Table(title="治理分析完成", show_header=True, header_style="bold blue")
+    table.add_column("状态", style="cyan", no_wrap=True)
+    table.add_column("数量", style="magenta", no_wrap=True)
+    table.add_column("指标", style="white")
+    rows = (
+        ("success", manifest.completed_metrics),
+        ("degraded", manifest.degraded_metrics),
+        ("skipped", manifest.skipped_metrics),
+        ("failed", manifest.failed_metrics),
+    )
+    for status, names in rows:
+        table.add_row(status, str(len(names)), _format_metric_names(names))
+    console.print(table)
+    console.print(f"[green]✓[/green] 治理分析输出目录: {output}")
+
+
+def _format_metric_names(names) -> str:
+    return ", ".join(str(name) for name in names) if names else "-"
 
 
 def main():

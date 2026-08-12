@@ -1,0 +1,205 @@
+{% extends "shell.html.j2" %}
+
+{% block body %}
+<section class="stats-page">
+  <div class="page-hero">
+    <p class="eyebrow">Graph Intelligence</p>
+    <h1>图谱统计</h1>
+    <p>从离线画像和在线索引中查看数仓全景、分层健康、核心资产、业务域耦合、风险资产和口径一致性。</p>
+  </div>
+  <div id="stats-root" class="stats-dashboard" aria-live="polite">
+    <div class="empty">正在加载图谱统计…</div>
+  </div>
+</section>
+{% endblock %}
+
+{% block page_script %}
+<script>
+function esc(s){ const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }
+function fmt(n){
+  if(n === null || n === undefined || n === '') return '-';
+  const num = Number(n);
+  if(Number.isFinite(num)) return num.toLocaleString(undefined, {maximumFractionDigits: 4});
+  return String(n);
+}
+function val(row, key){
+  if(!row) return '';
+  const raw = row[key];
+  return raw && typeof raw === 'object' && 'value' in raw ? raw.value : raw;
+}
+function metricCard(label, value){ return `<div class="stat-card"><span>${esc(label)}</span><strong>${esc(fmt(value))}</strong></div>`; }
+function stateBadge(mode, analysis){
+  if(mode === 'profile') return '<div class="stats-state">治理画像已加载</div>';
+  if(mode === 'analysis') return '<div class="stats-state warn">离线分析已加载，dashboard.json 未生成</div>';
+  const suffix = analysis && analysis.error ? `：${analysis.error}` : '';
+  return `<div class="stats-state muted">Index-only 模式${esc(suffix)}</div>`;
+}
+function tableRows(rows, columns){
+  if(!rows || !rows.length) return '<div class="empty compact">暂无数据</div>';
+  return `<div class="stats-table-wrap"><table class="stats-table"><thead><tr>${columns.map(col => `<th>${esc(col.label)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${columns.map(col => `<td>${col.render ? col.render(row) : esc(fmt(val(row, col.key)))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+function barRows(rows, labelKey, valueKey){
+  if(!rows || !rows.length) return '<div class="empty compact">暂无数据</div>';
+  const max = Math.max(...rows.map(row => Number(val(row, valueKey) || 0)), 1);
+  return `<div class="bar-list">${rows.map(row => {
+    const value = Number(val(row, valueKey) || 0);
+    const width = Math.max(4, Math.round(value / max * 100));
+    return `<div class="bar-row"><span title="${esc(val(row, labelKey))}">${esc(val(row, labelKey))}</span><div><i style="width:${width}%"></i></div><b>${esc(fmt(value))}</b></div>`;
+  }).join('')}</div>`;
+}
+function linkTable(row){
+  const id = row.table_id || row.id || row.source_table_id || row.target_table_id;
+  const name = row.table_name || row.fullName || row.name || id || '';
+  return id ? `<a href="/viewer?node_id=${encodeURIComponent(id)}">${esc(name)}</a>` : esc(name);
+}
+function shortJson(row){
+  const text = JSON.stringify(row);
+  return esc(text.length > 180 ? `${text.slice(0, 180)}...` : text);
+}
+function metricRows(obj){
+  return Object.entries(obj || {}).map(([name, value]) => ({name, value}));
+}
+function matrixRows(rows, sourceKey, targetKey){
+  return tableRows(rows, [
+    {label:'Source', key:sourceKey},
+    {label:'Target', key:targetKey},
+    {label:'边数', key:'edge_count'},
+    {label:'字段权重', key:'field_weight'},
+    {label:'SQL 权重', key:'sql_weight'}
+  ]);
+}
+function section(title, html){ return `<section class="stats-panel wide"><h2>${esc(title)}</h2>${html}</section>`; }
+function fallbackDashboard(idx){
+  const stats = idx.stats || {};
+  return {
+    overview: {
+      cards: {
+        sql_count: stats.sql,
+        table_count: idx.tableCount,
+        column_count: idx.columnCount,
+        transform_count: idx.transformCount,
+        table_lineage_edges: idx.tableLineageEdges,
+        average_upstream_count: '-',
+        average_downstream_count: '-'
+      },
+      layerDistribution: []
+    },
+    layerHealth: {layerMatrix: [], topLayerDriftTables: [], violations: []},
+    coreAssets: {
+      topBlastScoreTables: idx.topDegreeTables || [],
+      topPagerankTables: [],
+      topKCoreTables: [],
+      topReadTables: idx.topReadTables || [],
+      topWriteTables: idx.topWriteTables || []
+    },
+    domains: {communitySummary: {}, communityMatrix: [], topBridgeTables: []},
+    riskAssets: {
+      noUpstreamTables: [],
+      noDownstreamTables: idx.analysisRiskTables || [],
+      topSqlComplexity: [],
+      topAnomalyTables: [],
+      productionConsumption: {}
+    },
+    consistency: {summary: {}, groups: [], similarityCandidates: []}
+  };
+}
+function renderStats(payload){
+  const root = document.getElementById('stats-root');
+  const idx = payload.index || {};
+  const analysis = payload.profile || payload.analysis || {};
+  const mode = payload.mode || analysis.mode || 'index_only';
+  const dashboard = analysis.dashboard && Object.keys(analysis.dashboard).length ? analysis.dashboard : fallbackDashboard(idx);
+  const overview = dashboard.overview || {};
+  const cards = overview.cards || {};
+  const layer = dashboard.layerHealth || {};
+  const core = dashboard.coreAssets || {};
+  const domains = dashboard.domains || {};
+  const risks = dashboard.riskAssets || {};
+  const consistency = dashboard.consistency || {};
+  root.innerHTML = `
+    ${stateBadge(mode, analysis)}
+    <div class="stats-grid">
+      ${metricCard('SQL', cards.sql_count)}
+      ${metricCard('表', cards.table_count)}
+      ${metricCard('字段', cards.column_count)}
+      ${metricCard('Transform', cards.transform_count)}
+      ${metricCard('表级边', cards.table_lineage_edges)}
+      ${metricCard('字段血缘覆盖', cards.field_lineage_coverage)}
+    </div>
+    <div class="stats-panels">
+      <section class="stats-panel"><h2>节点类型分布</h2>${barRows(idx.nodeTypes, 'type', 'count')}</section>
+      <section class="stats-panel"><h2>边类型分布</h2>${barRows(idx.edgeTypes, 'type', 'count')}</section>
+    </div>
+    ${section('数仓全景', `
+      <h3>规模指标</h3>
+      <div class="stats-grid compact">
+        ${metricCard('逻辑表', cards.logical_table_count)}
+        ${metricCard('CTE/子查询', cards.cte_table_count)}
+        ${metricCard('字段依赖边', cards.field_dependency_edges)}
+        ${metricCard('平均字段数', cards.average_fields_per_table)}
+        ${metricCard('平均上游', cards.average_upstream_count)}
+        ${metricCard('平均下游', cards.average_downstream_count)}
+      </div>
+      <h3>层级分布</h3>
+      ${tableRows(overview.layerDistribution, [
+        {label:'层级', key:'layer'}, {label:'表', key:'table_count'}, {label:'字段', key:'field_count'}, {label:'SQL', key:'sql_count'}, {label:'边', key:'edge_count'}
+      ])}
+    `)}
+    ${section('分层健康', `
+      <h3>层间依赖矩阵</h3>${matrixRows(layer.layerMatrix, 'source_layer', 'target_layer')}
+      <h3>Layer Drift Top</h3>${tableRows(layer.topLayerDriftTables, [
+        {label:'表', render: linkTable}, {label:'声明层级', key:'declared_layer'}, {label:'Graph Layer', key:'graph_layer_max'}, {label:'漂移', key:'layer_drift'}
+      ])}
+      <h3>跨层违规</h3>${tableRows(layer.violations, [
+        {label:'Source', key:'source_table_name'}, {label:'Target', key:'target_table_name'}, {label:'规则', key:'rule_id'}, {label:'级别', key:'severity'}
+      ])}
+    `)}
+    ${section('核心资产', `
+      <h3>Blast Score</h3>${tableRows(core.topBlastScoreTables, [
+        {label:'表', render: linkTable}, {label:'分数', key:'blast_score'}, {label:'下游影响', key:'downstream_reachability_count'}, {label:'出度', key:'out_degree'}
+      ])}
+      <h3>PageRank / Authority / K-Core</h3>${tableRows([...(core.topPagerankTables || []), ...(core.topAuthorityTables || []), ...(core.topKCoreTables || [])].slice(0, 20), [
+        {label:'表', render: linkTable}, {label:'PageRank', key:'pagerank_reverse'}, {label:'Authority', key:'hits_authority'}, {label:'K-Core', key:'k_core'}
+      ])}
+      <h3>读写热度</h3>${tableRows([...(core.topReadTables || []), ...(core.topWriteTables || [])].slice(0, 20), [
+        {label:'表', render: linkTable}, {label:'读 SQL', key:'read_count'}, {label:'写 SQL', key:'write_count'}, {label:'产品分', key:'product_score'}
+      ])}
+    `)}
+    ${section('业务域与耦合', `
+      <h3>社区概览</h3>${tableRows(metricRows(domains.communitySummary), [{label:'指标', key:'name'}, {label:'值', key:'value'}])}
+      <h3>社区依赖矩阵</h3>${matrixRows(domains.communityMatrix, 'source_community_id', 'target_community_id')}
+      <h3>Bridge / Impact Entropy</h3>${tableRows([...(domains.topBridgeTables || []), ...(domains.topImpactEntropyTables || [])].slice(0, 20), [
+        {label:'表', render: linkTable}, {label:'Bridge', key:'bridge_score'}, {label:'Community', key:'community_id'}, {label:'影响熵', key:'impact_entropy'}
+      ])}
+    `)}
+    ${section('风险资产', `
+      <h3>生产消费风险</h3>${tableRows(metricRows(risks.productionConsumption), [{label:'指标', key:'name'}, {label:'值', key:'value'}])}
+      <h3>无上游 / 无下游 / 多 Producer</h3>${tableRows([...(risks.noUpstreamTables || []), ...(risks.noDownstreamTables || []), ...(risks.multiProducerTables || [])].slice(0, 30), [
+        {label:'表', render: linkTable}, {label:'层级', key:'layer'}, {label:'入度', key:'in_degree'}, {label:'出度', key:'out_degree'}, {label:'Producer', key:'producer_count'}
+      ])}
+      <h3>SQL 复杂度</h3>${tableRows(risks.topSqlComplexity, [
+        {label:'SQL', key:'sql_name'}, {label:'复杂度', key:'complexity_score'}, {label:'读表', key:'read_table_count'}, {label:'JOIN', key:'join_count'}, {label:'SELECT *', key:'select_star_count'}
+      ])}
+      <h3>异常分</h3>${tableRows(risks.topAnomalyTables, [
+        {label:'表', render: linkTable}, {label:'异常分', key:'rule_anomaly_score'}, {label:'状态', key:'rule_anomaly_status'}, {label:'模型分', key:'model_anomaly_score'}
+      ])}
+    `)}
+    ${section('口径一致性', `
+      <h3>一致性概览</h3>${tableRows(metricRows(consistency.summary), [{label:'指标', key:'name'}, {label:'值', key:'value'}])}
+      <h3>风险组</h3>${tableRows(consistency.groups, [
+        {label:'类型', key:'group_type'}, {label:'字段/指标', key:'field_name'}, {label:'Fingerprint', key:'fingerprint'}, {label:'证据', render: shortJson}
+      ])}
+      <h3>相似资产</h3>${tableRows(consistency.similarityCandidates, [
+        {label:'左表', key:'left_table_name'}, {label:'右表', key:'right_table_name'}, {label:'相似度', key:'similarity_score'}, {label:'召回', key:'recall_sources'}
+      ])}
+    `)}
+  `;
+}
+fetch('/api/stats')
+  .then(res => res.json())
+  .then(renderStats)
+  .catch(err => {
+    document.getElementById('stats-root').innerHTML = `<div class="empty">统计加载失败：${esc(err.message || err)}</div>`;
+  });
+</script>
+{% endblock %}

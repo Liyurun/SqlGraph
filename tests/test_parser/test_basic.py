@@ -1,8 +1,11 @@
 # Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+from sqlglot import exp
+
+import sqlgraph.parser.base as parser_base
 from sqlgraph.parser.base import SqlParser
 
 
@@ -25,6 +28,35 @@ def test_parse_insert_overwrite():
     result = parser.parse(sql, name="daily_agg")
     assert len(result.target_tables) == 1
     assert result.target_tables[0]["name"] == "dws_ad_daily"
+    assert any(t["name"] == "stg_impressions" for t in result.source_tables)
+
+
+def test_parse_select_sources_with_legacy_from_ast_key(monkeypatch):
+    original_parse = parser_base.sqlglot.parse
+
+    def parse_with_from_key(sql, read=None, **kwargs):
+        statements = original_parse(sql, read=read, **kwargs)
+        for stmt in statements:
+            if stmt is None:
+                continue
+            for select in stmt.find_all(exp.Select):
+                if "from_" in select.args:
+                    select.args["from"] = select.args.pop("from_")
+        return statements
+
+    monkeypatch.setattr(parser_base.sqlglot, "parse", parse_with_from_key)
+
+    parser = SqlParser(dialect="spark")
+    result = parser.parse(
+        """
+        INSERT OVERWRITE TABLE dws_ad_daily
+        SELECT ad_id, dt
+        FROM stg_impressions
+        """,
+        name="legacy_from_key",
+    )
+
+    assert result.target_tables == [{"name": "dws_ad_daily", "is_cte": False}]
     assert any(t["name"] == "stg_impressions" for t in result.source_tables)
 
 
@@ -106,6 +138,41 @@ def test_parse_multiple_sources():
     names = [t["name"] for t in result.source_tables]
     assert "table_a" in names
     assert "table_b" in names
+
+
+def test_parse_physical_table_alias_is_not_cte():
+    parser = SqlParser(dialect="spark")
+    sql = """
+    INSERT OVERWRITE TABLE dst
+    SELECT adv.advertiser_id
+    FROM ad_dim.dim_overseas_advertiser adv
+    """
+    result = parser.parse(sql, name="physical_alias")
+
+    assert result.cte_tables == []
+    source = next(t for t in result.source_tables if t["name"] == "ad_dim.dim_overseas_advertiser")
+    assert source["alias"] == "adv"
+    assert source["is_cte"] is False
+    advertiser_id = next(c for c in result.columns if c["name"] == "advertiser_id")
+    assert advertiser_id["physical_column"] == "ad_dim.dim_overseas_advertiser.advertiser_id"
+
+
+def test_parse_global_catalog_table_is_canonicalized():
+    parser = SqlParser(dialect="spark")
+    sql = """
+    INSERT OVERWRITE TABLE dst
+    SELECT dim_overseas_advertiser.advertiser_id
+    FROM Global.ad_dim.dim_overseas_advertiser
+    """
+    result = parser.parse(sql, name="global_catalog")
+
+    assert result.source_tables == [{
+        "name": "ad_dim.dim_overseas_advertiser",
+        "alias": "dim_overseas_advertiser",
+        "is_cte": False,
+    }]
+    advertiser_id = next(c for c in result.columns if c["name"] == "advertiser_id")
+    assert advertiser_id["physical_column"] == "ad_dim.dim_overseas_advertiser.advertiser_id"
 
 
 def test_parse_insert_union_all_sources_and_columns():

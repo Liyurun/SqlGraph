@@ -1,5 +1,5 @@
 # Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 
 import sys
 import os
@@ -167,6 +167,38 @@ def test_build_insert_union_all_lineage():
     assert ("src_b", "dst") in lineage_pairs
     deps = graph.get_edges_by_type(EdgeType.COMPUTE_DEPENDENCY)
     assert len(deps) == 2
+
+
+def test_build_physical_alias_and_global_catalog_read_lineage():
+    builder = GraphBuilder(dialect="spark")
+    sql = """
+    INSERT OVERWRITE TABLE ad_dwa.output_tbl
+    SELECT g.advertiser_id
+    FROM Global.ad_dim.dim_overseas_advertiser g
+    JOIN ad_dim.dim_overseas_advertiser p
+    ON g.advertiser_id = p.advertiser_id
+    """
+    graph = builder.build_from_sql(sql, name="global_alias")
+
+    tables = [n for n in graph.nodes if n.node_type.value == "table"]
+    table_names = [n.full_name for n in tables]
+    assert table_names.count("ad_dim.dim_overseas_advertiser") == 1
+    assert "Global.ad_dim.dim_overseas_advertiser" not in table_names
+
+    source_table = next(n for n in tables if n.full_name == "ad_dim.dim_overseas_advertiser")
+    assert source_table.is_cte is False
+
+    read_edges = [
+        e for e in graph.get_edges_by_type(EdgeType.READS_FROM)
+        if e.target_id == source_table.id
+    ]
+    assert len(read_edges) == 1
+
+    lineage_pairs = {
+        (graph.get_node(e.source_id).full_name, graph.get_node(e.target_id).full_name)
+        for e in graph.get_edges_by_type(EdgeType.TABLE_LINEAGE)
+    }
+    assert ("ad_dim.dim_overseas_advertiser", "ad_dwa.output_tbl") in lineage_pairs
 
 
 def test_build_lateral_view_explode_lineage():

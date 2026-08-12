@@ -1,5 +1,5 @@
 # Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 
 # tests/test_integration/test_api.py
 """

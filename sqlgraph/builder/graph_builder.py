@@ -1,5 +1,5 @@
 # Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 
 # sqlgraph/builder/graph_builder.py
 from __future__ import annotations
@@ -11,7 +11,7 @@ from sqlgraph.model import (
     PropertyGraph, SqlNode, TableNode, ColumnNode, TransformNode,
     Edge, EdgeType, ExpressionType,
 )
-from sqlgraph.parser.base import SqlParser, SqlParseResult
+from sqlgraph.parser.base import SqlParser, SqlParseResult, _canonical_table_name
 from sqlgraph.input.sql_source import SqlSource
 from sqlgraph.input.csv_schema import SchemaRegistry
 from sqlgraph.builder.table_registry import TableRegistry
@@ -152,37 +152,22 @@ class GraphBuilder:
         self.graph.add_node(sql_node)
 
         for src in result.source_tables:
-            tname = src["name"]
+            tname = _canonical_table_name(src["name"])
             if src.get("is_cte"):
                 continue
             tid = self._ensure_table_node(tname, is_cte=False)
-            self.graph.add_edge(Edge(
-                id=_gen_id("e"),
-                source_id=result.sql_id,
-                target_id=tid,
-                edge_type=EdgeType.READS_FROM,
-            ))
+            self._add_edge_dedup(result.sql_id, tid, EdgeType.READS_FROM)
 
         for tgt in result.target_tables:
-            tname = tgt["name"]
+            tname = _canonical_table_name(tgt["name"])
             tid = self._ensure_table_node(tname, is_cte=False)
-            self.graph.add_edge(Edge(
-                id=_gen_id("e"),
-                source_id=result.sql_id,
-                target_id=tid,
-                edge_type=EdgeType.WRITES_TO,
-            ))
+            self._add_edge_dedup(result.sql_id, tid, EdgeType.WRITES_TO)
             self.table_registry.register_producer(tname, result.sql_id, tid)
 
         if not result.target_tables and any(col.get("table") is None for col in result.columns):
             tname = _result_table_name(result.sql_name)
             tid = self._ensure_table_node(tname, is_cte=False)
-            self.graph.add_edge(Edge(
-                id=_gen_id("e"),
-                source_id=result.sql_id,
-                target_id=tid,
-                edge_type=EdgeType.WRITES_TO,
-            ))
+            self._add_edge_dedup(result.sql_id, tid, EdgeType.WRITES_TO)
             self.table_registry.register_producer(tname, result.sql_id, tid)
 
         for cte in result.cte_tables:
@@ -206,6 +191,8 @@ class GraphBuilder:
         logic_fingerprint: str | None = None,
     ) -> str:
         """确保表节点存在，返回节点 ID（id 由表名确定性生成）"""
+        if not is_cte:
+            table_name = _canonical_table_name(table_name)
         if table_name in self._table_nodes:
             node = self.graph.get_node(self._table_nodes[table_name])
             if node and is_cte:
@@ -257,7 +244,7 @@ class GraphBuilder:
         if len(parts) < 2:
             return None
         col_name = parts[-1]
-        table_name = ".".join(parts[:-1])
+        table_name = _canonical_table_name(".".join(parts[:-1]))
         cte_names = [c["name"] for c in self._current_ctes]
         if table_name in self._table_nodes:
             table_id = self._table_nodes[table_name]

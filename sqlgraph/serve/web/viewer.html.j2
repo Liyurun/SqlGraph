@@ -1,40 +1,161 @@
-{# Copyright (c) 2026 ByteDance Ltd. and/or its affiliates #}
-{# SPDX-License-Identifier: Apache-2.0 #}
+{% extends "shell.html.j2" %}
 
+{% block body %}
 <section class="viewer-page">
   <div class="viewer-toolbar">
-    <label>深度
-      <select id="depth"><option>1</option><option>2</option><option>3</option></select>
+    <label class="field compact">初始深度
+      <input id="depth" name="depth" type="number" inputmode="numeric" min="1" max="25" value="1" autocomplete="off" />
     </label>
-    <label>方向
-      <select id="direction">
+    <label class="field compact">方向
+      <select id="direction" name="direction">
         <option value="both">双向</option>
         <option value="up">上游</option>
         <option value="down">下游</option>
       </select>
     </label>
-    <button id="reload">刷新</button>
+    <label class="field compact">模式
+      <select id="mode" name="mode">
+        <option value="table" selected>表级血缘</option>
+        <option value="raw">原始图</option>
+      </select>
+    </label>
+    <button id="reload" type="button">刷新图谱</button>
+    <button id="expand-up" type="button">展开上游</button>
+    <button id="expand-down" type="button">展开下游</button>
+    <span id="graph-status" class="toolbar-status" role="status" aria-live="polite">选择节点后可继续展开。</span>
   </div>
-  <div id="cy"></div>
-  <aside id="detail" class="detail"></aside>
+  <div id="cy" role="application" aria-label="SqlGraph 血缘图">
+    <div class="graph-empty">从检索页选择一张表，或在地址中带上 node_id。</div>
+  </div>
+  <aside id="detail" class="detail" aria-live="polite"></aside>
 </section>
+{% endblock %}
+
+{% block page_script %}
 <script>
 const params = new URLSearchParams(location.search);
 let rootId = params.get('node_id');
+const statusEl = document.getElementById('graph-status');
+const detailEl = document.getElementById('detail');
+function setControlValue(id, value, allowed){
+  if(!value || (allowed && !allowed.includes(value))) return;
+  const el = document.getElementById(id);
+  if(el) el.value = value;
+}
+const initialDepth = params.get('depth');
+if(initialDepth && /^\d+$/.test(initialDepth)){
+  const depthInput = document.getElementById('depth');
+  const minDepth = Number(depthInput.min || 1);
+  const maxDepth = Number(depthInput.max || 25);
+  const depth = Math.min(maxDepth, Math.max(minDepth, Number(initialDepth)));
+  depthInput.value = String(depth);
+}
+setControlValue('direction', params.get('direction'), ['both', 'up', 'down']);
+setControlValue('mode', params.get('mode'), ['table', 'raw']);
+function setStatus(text){ statusEl.textContent = text; }
+function esc(s){ const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }
+function showDetailMessage(text){ detailEl.innerHTML = `<div class="empty">${esc(text)}</div>`; }
+function setBusy(button, busy, label){
+  if(!button) return;
+  if(busy){
+    button.dataset.label = button.textContent;
+    button.textContent = label;
+    button.disabled = true;
+  } else {
+    button.textContent = button.dataset.label || button.textContent;
+    button.disabled = false;
+  }
+}
 async function loadSubgraph(){
-  if(!rootId){ document.getElementById('detail').innerHTML = '从检索页选择一个节点开始。'; return; }
+  if(!rootId){
+    showDetailMessage('从检索页选择一个节点开始。');
+    setStatus('等待选择节点。');
+    return;
+  }
+  const reloadButton = document.getElementById('reload');
   const depth = document.getElementById('depth').value;
   const direction = document.getElementById('direction').value;
-  const res = await fetch(`/api/subgraph?node_id=${encodeURIComponent(rootId)}&depth=${depth}&direction=${direction}`);
-  const data = await res.json();
-  window.renderGraph(data);
-  const detail = await (await fetch(`/api/node/${encodeURIComponent(rootId)}`)).json();
-  window.renderDetail(detail);
+  const mode = document.getElementById('mode').value;
+  setStatus('正在加载图谱…');
+  setBusy(reloadButton, true, '加载中…');
+  try {
+    const res = await fetch(`/api/subgraph?node_id=${encodeURIComponent(rootId)}&depth=${depth}&direction=${direction}&mode=${mode}`);
+    if(!res.ok){ throw new Error('subgraph failed'); }
+    const data = await res.json();
+    window.renderGraph(data);
+    if(data.error){
+      showDetailMessage(data.error);
+      setStatus('图谱加载完成，但当前节点无法生成该模式的子图。');
+      return;
+    }
+    const detailRes = await fetch(`/api/node/${encodeURIComponent(rootId)}`);
+    if(!detailRes.ok){ throw new Error('detail failed'); }
+    const detail = await detailRes.json();
+    window.renderDetail(detail);
+    const loadedText = `已加载 ${data.nodes ? data.nodes.length : 0} 个节点、${data.edges ? data.edges.length : 0} 条边。`;
+    setStatus(data.truncated && data.message ? data.message : loadedText);
+  } catch(err) {
+    showDetailMessage('图谱加载失败，请检查节点 ID 或稍后重试。');
+    setStatus('图谱加载失败。');
+  } finally {
+    setBusy(reloadButton, false);
+  }
 }
 document.getElementById('reload').addEventListener('click', loadSubgraph);
+document.getElementById('mode').addEventListener('change', loadSubgraph);
+document.getElementById('expand-up').addEventListener('click', () => expandSelected('up'));
+document.getElementById('expand-down').addEventListener('click', () => expandSelected('down'));
 window.onGraphNodeTap = async (nodeId) => {
-  const detail = await (await fetch(`/api/node/${encodeURIComponent(nodeId)}`)).json();
-  window.renderDetail(detail);
+  setStatus('正在读取节点详情…');
+  try {
+    const res = await fetch(`/api/node/${encodeURIComponent(nodeId)}`);
+    if(!res.ok){ throw new Error('detail failed'); }
+    const detail = await res.json();
+    window.renderDetail(detail);
+    setStatus('已选中节点，可继续展开上游或下游。');
+  } catch(err) {
+    showDetailMessage('节点详情读取失败，请重新选择节点。');
+    setStatus('节点详情读取失败。');
+  }
 };
+async function expandSelected(direction){
+  const mode = document.getElementById('mode').value;
+  if(mode !== 'table'){
+    showDetailMessage('原始图模式不支持增量展开，请切换到表级血缘。');
+    setStatus('切换到表级血缘后再展开。');
+    return;
+  }
+  const nodeId = window.selectedGraphNodeId && window.selectedGraphNodeId();
+  if(!nodeId){
+    showDetailMessage('请先点击一个表节点。');
+    setStatus('请先点击一个表节点。');
+    return;
+  }
+  const button = document.getElementById(direction === 'up' ? 'expand-up' : 'expand-down');
+  setStatus(direction === 'up' ? '正在展开上游…' : '正在展开下游…');
+  setBusy(button, true, direction === 'up' ? '展开中…' : '展开中…');
+  try {
+    const res = await fetch(`/api/expand?node_id=${encodeURIComponent(nodeId)}&direction=${direction}&depth=1&mode=table`);
+    if(!res.ok){ throw new Error('expand failed'); }
+    const data = await res.json();
+    if(data.error){
+      showDetailMessage(data.error);
+    }
+    const added = window.mergeGraph(data);
+    const nodeCount = added && added.nodes != null ? added.nodes : (data.nodes ? data.nodes.length : 0);
+    const edgeCount = added && added.edges != null ? added.edges : (data.edges ? data.edges.length : 0);
+    if(data.truncated && data.message){
+      setStatus(data.message);
+    } else {
+      setStatus(nodeCount || edgeCount ? `已追加 ${nodeCount} 个节点、${edgeCount} 条边。` : '没有新的上游或下游节点。');
+    }
+  } catch(err) {
+    showDetailMessage('展开失败，请稍后重试。');
+    setStatus('展开失败。');
+  } finally {
+    setBusy(button, false);
+  }
+}
 loadSubgraph();
 </script>
+{% endblock %}

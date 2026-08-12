@@ -1,0 +1,58 @@
+table_name,ddl
+demo_mart.dim_user_profile_df,"CREATE TABLE `demo_mart`.`dim_user_profile_df`(
+  `user_id` BIGINT COMMENT 'surrogate user key',
+  `user_name` STRING COMMENT 'display name',
+  `register_channel` STRING COMMENT 'acquisition channel',
+  `city_code` STRING COMMENT 'city code',
+  `is_active` BIGINT COMMENT '1 active 0 inactive')
+COMMENT 'user profile dimension'
+PARTITIONED BY (`p_date` STRING COMMENT 'date', `hour` STRING COMMENT 'hour')
+ROW FORMAT SERDE
+  'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'
+STORED AS
+  INPUTFORMAT 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat'
+  OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat'
+TBLPROPERTIES (
+  'transient_lastDdlTime' = '1700000000')"
+demo_mart.dwd_order_event_di,"CREATE TABLE `demo_mart`.`dwd_order_event_di`(
+  `order_id` BIGINT COMMENT 'order id',
+  `user_id` BIGINT COMMENT 'buyer id',
+  `item_id` BIGINT COMMENT 'item id',
+  `pay_amount` DECIMAL(18,2) COMMENT 'paid amount',
+  `discount_rate` DOUBLE COMMENT 'discount ratio',
+  `order_time` TIMESTAMP COMMENT 'order create time',
+  `order_status` STRING COMMENT 'order status')
+COMMENT 'order event detail'
+PARTITIONED BY (`p_date` STRING COMMENT 'date')
+STORED AS ORC"
+demo_mart.dwd_item_detail_df,"CREATE TABLE `demo_mart`.`dwd_item_detail_df`(
+  `item_id` BIGINT COMMENT 'item id',
+  `item_name` STRING COMMENT 'item name',
+  `category_path` ARRAY<STRING> COMMENT 'category hierarchy',
+  `attr_kv` MAP<STRING,STRING> COMMENT 'attribute map',
+  `price_info` STRUCT<currency:STRING,amount:DECIMAL(18,2)> COMMENT 'price struct')
+COMMENT 'item detail dimension'
+PARTITIONED BY (`p_date` STRING)
+STORED AS PARQUET"
+demo_mart.dws_user_stats_view,"CREATE VIEW `demo_mart`.`dws_user_stats_view`(
+  `user_id` COMMENT 'user id',
+  `order_cnt` COMMENT 'order count',
+  `p_date`,
+  `gmv` COMMENT 'gross merchandise value')
+COMMENT 'user daily stats view'
+AS SELECT user_id, count(1) AS order_cnt, p_date, sum(pay_amount) AS gmv
+FROM demo_mart.dwd_order_event_di GROUP BY user_id, p_date"
+demo_mart.ads_channel_report_df,"CREATE TABLE `demo_mart`.`ads_channel_report_df`(
+  `channel` STRING COMMENT 'channel name',
+  `user_cnt` BIGINT COMMENT 'user count',
+  `gmv` DECIMAL(18,2) COMMENT 'gmv')
+COMMENT 'channel report'
+PARTITIONED BY (`p_date` STRING)
+STORED AS PARQUET"
+demo_mart.dim_product_category_df,"CREATE TABLE `demo_mart`.`dim_product_category_df`(
+  `category_id` BIGINT COMMENT 'category id',
+  `category_name` STRING COMMENT 'category name',
+  `parent_id` BIGINT COMMENT 'parent category id')
+COMMENT 'product category dimension'
+PARTITIONED BY (`p_date` STRING)
+STORED AS PARQUET"

@@ -1,11 +1,11 @@
 # Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 
 import json
 import os
 
 from sqlgraph.api import build_graph
-from sqlgraph.serve.index_io import build_index
+from sqlgraph.serve.index_io import build_index, build_index_from_graph_json
 
 
 def _graph():
@@ -30,6 +30,26 @@ def test_build_index_writes_jsonl_and_manifest(tmp_path):
     with open(os.path.join(index_dir, "nodes.jsonl"), encoding="utf-8") as f:
         first = json.loads(f.readline())
     assert "id" in first and "node_type" in first
+
+
+def test_build_index_from_graph_json_writes_jsonl_and_manifest(tmp_path):
+    graph = _graph()
+    graph_json = os.path.join(tmp_path, "graph.json")
+    with open(graph_json, "w", encoding="utf-8") as f:
+        json.dump(graph.to_dict(), f, ensure_ascii=False)
+    index_dir = os.path.join(tmp_path, "graph_idx")
+
+    manifest = build_index_from_graph_json(
+        graph_json,
+        index_dir,
+        source_meta={"path": graph_json, "size": 10, "mtime": 1, "sha1_16": "g"},
+    )
+
+    assert manifest["source"]["source_type"] == "graph_json"
+    assert manifest["stats"]["nodes"] > 0
+    assert manifest["stats"]["sql"] > 0
+    for fname in ("manifest.json", "nodes.jsonl", "edges.jsonl", "sql.jsonl"):
+        assert os.path.isfile(os.path.join(index_dir, fname))
 
 
 from sqlgraph.serve.index_io import is_cache_valid, load_raw_index
@@ -59,7 +79,7 @@ def test_load_raw_index_returns_nodes_edges_sql(tmp_path):
     assert raw["manifest"]["version"] == 1
 
 
-from sqlgraph.serve.index_io import prepare_index
+from sqlgraph.serve.index_io import prepare_index, prepare_index_from_graph_json
 
 
 def test_prepare_index_builds_then_reuses(tmp_path):
@@ -81,3 +101,20 @@ def test_prepare_index_builds_then_reuses(tmp_path):
     logs3: list[str] = []
     prepare_index(sql_file, base, dialect="spark", rebuild=True, log=logs3.append)
     assert any("rebuild" in m for m in logs3)
+
+
+def test_prepare_index_from_graph_json_builds_then_reuses(tmp_path):
+    graph_json = os.path.join(tmp_path, "graph.json")
+    with open(graph_json, "w", encoding="utf-8") as f:
+        json.dump(_graph().to_dict(), f, ensure_ascii=False)
+    base = os.path.join(tmp_path, "graph_index_base")
+
+    logs1: list[str] = []
+    dir1 = prepare_index_from_graph_json(graph_json, base, log=logs1.append)
+    assert os.path.isfile(os.path.join(dir1, "manifest.json"))
+    assert any("indexing graph.json" in m for m in logs1)
+
+    logs2: list[str] = []
+    dir2 = prepare_index_from_graph_json(graph_json, base, log=logs2.append)
+    assert dir2 == dir1
+    assert any("cache hit" in m for m in logs2)

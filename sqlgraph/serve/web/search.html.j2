@@ -1,32 +1,96 @@
-{# Copyright (c) 2026 ByteDance Ltd. and/or its affiliates #}
-{# SPDX-License-Identifier: Apache-2.0 #}
+{% extends "shell.html.j2" %}
 
+{% block body %}
 <section class="search-page">
+  <header class="page-hero">
+    <p class="eyebrow">表与字段检索</p>
+    <h1>快速定位血缘入口</h1>
+    <p>输入表名、库名前缀或字段名，然后进入图谱查看表级上下游。</p>
+  </header>
   <div class="search-bar">
-    <input id="q" type="text" placeholder="搜索表名或字段名...">
-    <select id="type">
+    <label class="field grow">关键词
+      <input id="q" name="q" type="search" autocomplete="off" placeholder="例如 ad_dwa 或 creative_id…" aria-describedby="search-help">
+    </label>
+    <label class="field compact">范围
+    <select id="type" name="type">
       <option value="all">全部</option>
       <option value="table">表</option>
       <option value="column">字段</option>
     </select>
+    </label>
   </div>
-  <div id="results" class="results"></div>
+  <p id="search-help" class="help-text">按名称模糊匹配，结果会打开到表级血缘图。</p>
+  <div id="results" class="results" aria-live="polite">
+  </div>
 </section>
+{% endblock %}
+
+{% block page_script %}
 <script>
 const results = document.getElementById('results');
-async function runSearch(){
-  const q = document.getElementById('q').value.trim();
-  const type = document.getElementById('type').value;
-  if(!q){ results.innerHTML=''; return; }
-  const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=${type}&limit=50`);
-  const data = await res.json();
-  results.innerHTML = (data.hits||[]).map(h =>
-    `<a class="hit" href="/viewer?node_id=${encodeURIComponent(h.id)}">
-       <span class="hit-type ${h.type}">${h.type}</span>
-       <span class="hit-name">${h.fullName||h.name}</span>
-       <span class="hit-sql">SQL ${h.sqlCount||0}</span>
-     </a>`).join('') || '<div class="empty">无匹配结果</div>';
+const input = document.getElementById('q');
+const typeSelect = document.getElementById('type');
+const examples = [
+  { label: '数仓分层', title: 'DWA 汇总层表', query: 'ad_dwa', type: 'table', desc: '从汇总层表出发，观察广告数仓的上游来源与写入关系。' },
+  { label: '字段检索', title: 'creative_id 字段', query: 'creative_id', type: 'column', desc: '用核心业务字段切入，查看字段出现在哪些表和链路中。' },
+  { label: '数据集市', title: 'AD DM 数据集市', query: 'ad_dm', type: 'table', desc: '定位面向分析和应用的数据集市表。' },
+  { label: '明细层', title: 'DWD overseas 明细表', query: 'dwd_overseas', type: 'table', desc: '从明细层表名模式理解基础事实数据的分布。' },
+  { label: '业务概念', title: 'Campaign 相关对象', query: 'campaign', type: 'all', desc: '用业务概念检索相关表和字段。' },
+  { label: '营销资产', title: 'Brand 相关对象', query: 'brand', type: 'all', desc: '探索品牌营销相关的数据对象。' },
+];
+function esc(s){ const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }
+function renderEmpty(text){ results.innerHTML = `<div class="empty">${esc(text)}</div>`; }
+function renderExamples(){
+  results.innerHTML = `<section class="example-panel">
+    <div class="example-head">
+      <div>
+        <p class="eyebrow">推荐探索入口</p>
+        <h2>从这些真实对象开始看图谱</h2>
+      </div>
+      <p>点击任一示例会填入关键词并展示匹配结果，之后可进入表级血缘图。</p>
+    </div>
+    <div class="example-grid">
+      ${examples.map(item => `<button class="example-card" type="button" data-query="${esc(item.query)}" data-type="${esc(item.type)}">
+        <span class="example-label">${esc(item.label)}</span>
+        <span class="example-title">${esc(item.title)}</span>
+        <span class="example-query">${esc(item.query)}</span>
+        <span class="example-desc">${esc(item.desc)}</span>
+      </button>`).join('')}
+    </div>
+  </section>`;
 }
-document.getElementById('q').addEventListener('input', runSearch);
-document.getElementById('type').addEventListener('change', runSearch);
+async function runSearch(){
+  const q = input.value.trim();
+  const type = typeSelect.value;
+  if(!q){ renderExamples(); return; }
+  renderEmpty('正在检索…');
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=${type}&limit=50`);
+    if(!res.ok){ throw new Error('search failed'); }
+    const data = await res.json();
+    const hits = data.hits || [];
+    results.innerHTML = hits.length ? (
+      `<div class="result-summary">显示前 ${hits.length} 个匹配结果</div>` +
+      hits.map(h =>
+        `<a class="hit" href="/viewer?node_id=${encodeURIComponent(h.id)}">
+          <span class="hit-type ${h.type}">${h.type === 'table' ? '表' : '字段'}</span>
+          <span class="hit-name" title="${esc(h.fullName||h.name)}">${esc(h.fullName||h.name)}</span>
+          <span class="hit-sql">${h.sqlCount||0} 条 SQL</span>
+        </a>`).join('')
+    ) : '<div class="empty">无匹配结果，请换一个表名、库名前缀或字段名。</div>';
+  } catch(err) {
+    renderEmpty('检索失败，请稍后重试。');
+  }
+}
+input.addEventListener('input', runSearch);
+typeSelect.addEventListener('change', runSearch);
+results.addEventListener('click', event => {
+  const card = event.target.closest('.example-card');
+  if(!card) return;
+  input.value = card.dataset.query || '';
+  typeSelect.value = card.dataset.type || 'all';
+  runSearch();
+});
+renderExamples();
 </script>
+{% endblock %}

@@ -1,5 +1,5 @@
 # Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 
 # sqlgraph/parser/base.py
 from __future__ import annotations
@@ -17,6 +17,19 @@ from sqlgraph.parser import expr_dag
 
 # 无法确定归属物理表时的占位表名
 UNKNOWN_TABLE = "UNKNOWN"
+
+
+def _canonical_table_name(table_name: str) -> str:
+    """Normalize known equivalent physical table names.
+
+    In some warehouse SQL exports, ``Global.db.table`` refers to the same
+    physical table as ``db.table``. Region/catalog prefixes such as
+    ``US``/``EU2``/``SG`` remain significant and are intentionally preserved.
+    """
+    parts = [part for part in (table_name or "").split(".") if part]
+    if len(parts) >= 3 and parts[0].lower() == "global":
+        return ".".join(parts[1:])
+    return ".".join(parts)
 
 
 class ColumnResolver:
@@ -118,6 +131,8 @@ class SqlParser:
         self.dialect = dialect
         self.schema_registry = schema_registry
         self._cte_aliases: dict = {}
+        self._relation_aliases: dict = {}
+        self._cte_relation_names: set[str] = set()
         self._current_source_tables: list[str] = []
 
     def parse(self, sql: str, name: str = "sql", file_path: str | None = None) -> SqlParseResult:
@@ -141,6 +156,8 @@ class SqlParser:
         result.file_path = file_path
         result.dialect = self.dialect or ""
         self._cte_aliases = {}
+        self._relation_aliases = {}
+        self._cte_relation_names = set()
         self._current_source_tables = []
         self._current_all_sources = []
         self._parsed_derived_queries = set()
@@ -246,11 +263,15 @@ class SqlParser:
                 self._cte_aliases[cte_name] = cte_name
                 if result:
                     result.cte_tables.append({"name": cte_name, "alias": cte_name, "is_cte": True})
+                self._relation_aliases[cte_name] = cte_name
+                self._cte_relation_names.add(cte_name)
 
     def _register_derived_query(self, alias: str, query, result: SqlParseResult | None) -> str:
         """注册 CTE/子查询逻辑身份，相同逻辑与输出字段的 derived query 共用名称"""
         logical_name, fingerprint = _derived_query_identity(query, self.dialect)
         self._cte_aliases[alias] = logical_name
+        self._relation_aliases[alias] = logical_name
+        self._cte_relation_names.add(logical_name)
         if result:
             result.cte_tables.append({
                 "name": logical_name,
@@ -321,11 +342,14 @@ class SqlParser:
                 is_cte = True
             else:
                 raw_name = _table_to_name(source)
-                alias = source.alias_or_name
+                explicit_alias = _explicit_alias(source)
+                alias = explicit_alias or source.alias_or_name
                 tname = self._cte_aliases.get(raw_name, raw_name)
-                if alias and alias != raw_name:
-                    self._cte_aliases[alias] = tname
-                is_cte = raw_name in self._cte_aliases or tname in self._cte_aliases.values()
+                if explicit_alias:
+                    self._relation_aliases[explicit_alias] = tname
+                elif alias and alias != tname:
+                    self._relation_aliases[alias] = tname
+                is_cte = tname in self._cte_relation_names
             already_added = any(t["name"] == tname and t.get("alias") == alias for t in result.source_tables)
             already_in_target = any(t["name"] == tname for t in result.target_tables)
             if not already_added and not already_in_target:
@@ -358,7 +382,7 @@ class SqlParser:
         selects = stmt.expressions
         resolver = ColumnResolver(
             source_tables=self._current_source_tables,
-            alias_map=self._cte_aliases,
+            alias_map=self._relation_aliases,
             schema_registry=self.schema_registry,
             all_sources=getattr(self, "_current_all_sources", None),
         )
@@ -475,7 +499,7 @@ class SqlParser:
             table_part = col.table
             col_part = col.name
             if table_part:
-                resolved_table = self._cte_aliases.get(table_part, table_part)
+                resolved_table = self._relation_aliases.get(table_part, table_part)
                 parts.append(resolved_table)
             elif self.schema_registry and len(self._get_all_source_tables()) == 1:
                 srcs = self._get_all_source_tables()
@@ -511,7 +535,7 @@ def _table_to_name(table) -> str:
     if table.db:
         parts.append(table.db)
     parts.append(table.name)
-    return ".".join(parts)
+    return _canonical_table_name(".".join(parts))
 
 
 def _create_target_to_name(target) -> str | None:
@@ -521,7 +545,7 @@ def _create_target_to_name(target) -> str | None:
     if isinstance(target, exp.Table):
         return _table_to_name(target)
     name = getattr(target, "name", None)
-    return name or None
+    return _canonical_table_name(name) if name else None
 
 
 def _extract_create_view_command_parts(stmt: exp.Command) -> tuple[str, str] | None:
@@ -566,7 +590,7 @@ def _extract_create_view_name(sql: str) -> str | None:
     parts = []
     for part in re.finditer(r"`([^`]+)`|\"([^\"]+)\"|([A-Za-z_][\w$-]*)", raw_name):
         parts.append(next(group for group in part.groups() if group))
-    return ".".join(parts) if parts else None
+    return _canonical_table_name(".".join(parts)) if parts else None
 
 
 def _find_top_level_as(sql: str) -> int:
@@ -674,9 +698,14 @@ def _normalize_identifier(name: str | None) -> str:
     return (name or "").strip().strip("`\"").lower()
 
 
+def _explicit_alias(source) -> str | None:
+    alias = getattr(source, "alias", "") or ""
+    return alias or None
+
+
 def _iter_select_sources(stmt: exp.Select):
     """仅遍历当前 SELECT 作用域的直接 FROM/JOIN 来源，避免扫入 CTE 定义内部表"""
-    from_expr = stmt.args.get("from_")
+    from_expr = stmt.args.get("from_") or stmt.args.get("from")
     if from_expr is not None:
         source = from_expr.args.get("this")
         if isinstance(source, (exp.Table, exp.Subquery)):

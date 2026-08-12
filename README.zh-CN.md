@@ -1,7 +1,7 @@
 # SqlGraph
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.9--3.12-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/Liyurun/SqlGraph/actions/workflows/ci.yml/badge.svg)](https://github.com/Liyurun/SqlGraph/actions/workflows/ci.yml)
 [![SQLGlot](https://img.shields.io/badge/parser-SQLGlot-green.svg)](https://github.com/tobymao/sqlglot)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
@@ -54,7 +54,7 @@ pip install -e .
 pip install sqlgraph-lineage
 ```
 
-需要 Python 3.9+。
+需要 Python 3.9 到 3.12。
 
 ## 快速开始
 
@@ -174,7 +174,14 @@ tests/                   # 单元测试 + 集成测试
 ```bash
 pip install -e ".[all]"
 pytest            # 运行测试套件
+python scripts/opensource_guard.py
 ```
+
+## 发布物料
+
+SqlGraph 的发布物料选择 GitHub 源码和 PyPI 的 `sdist` + `wheel`。Python
+包会包含 CLI 运行所需的模板、静态资源和 demo SQL 示例；生成的可视化结果、本地索引缓存、
+私有数据集和部署专用文件不会进入发布包。
 
 ## 贡献
 
@@ -182,4 +189,4 @@ pytest            # 运行测试套件
 
 ## 许可证
 
-[Apache 2.0](LICENSE)
+[MIT](LICENSE)

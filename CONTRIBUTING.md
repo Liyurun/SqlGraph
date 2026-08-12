@@ -15,7 +15,7 @@ respectfully, and helps you get your change merged with less back-and-forth.
 - [Running tests](#running-tests)
 - [Your first contribution](#your-first-contribution)
 - [Submitting a change (pull requests)](#submitting-a-change-pull-requests)
-- [Contributor License Agreement](#contributor-license-agreement)
+- [Contribution licensing](#contribution-licensing)
 - [Commit message conventions](#commit-message-conventions)
 - [Reporting bugs](#reporting-bugs)
 - [Reporting a security vulnerability](#reporting-a-security-vulnerability)
@@ -76,17 +76,19 @@ cd SqlGraph
 pip install -e ".[all]"
 ```
 
-SqlGraph targets **Python 3.9+** (CI runs 3.9, 3.10, 3.11, and 3.12).
+SqlGraph targets **Python 3.9 through 3.12** (CI runs the same version matrix).
 
 ## Running tests
 
 ```bash
 pytest
+python scripts/opensource_guard.py
 ```
 
 Please make sure the full test suite passes before opening a PR. If you add or
-change behavior, add a test that covers it. The end-to-end demo is also a good
-smoke test:
+change behavior, add a test that covers it. The open-source guard checks that
+tracked files do not contain internal deployment or credential material. The
+end-to-end demo is also a good smoke test:
 
 ```bash
 python examples/ads_pipeline/run_demo.py
@@ -128,16 +130,10 @@ For anything bigger than a one- or two-line fix:
 cleanup, or changes to metadata files like `.gitignore` — do not need a prior
 issue and can go straight to a PR.
 
-## Contributor License Agreement
+## Contribution licensing
 
-Before a pull request can be accepted, contributors may be asked to sign the
-[ByteDance Contributor License Agreement v1.1](CLA.md). The CLA clarifies the
-intellectual property license granted with contributions and protects both
-contributors and project users.
-
-If you are contributing on your own behalf, sign the individual CLA through the
-project's CLA flow. If you are contributing on behalf of a company or other
-legal entity, follow the corporate CLA instructions in [CLA.md](CLA.md).
+By submitting a pull request, you agree that your contribution is licensed under
+the same [MIT](LICENSE) license as the rest of the project.
 
 ## Commit message conventions
 
@@ -220,4 +216,4 @@ helping make SqlGraph better.
 ## License
 
 By contributing, you agree that your contributions will be licensed under the
-[Apache 2.0](LICENSE) license.
+[MIT](LICENSE) license.

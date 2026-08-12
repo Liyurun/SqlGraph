@@ -1,7 +1,7 @@
 # SqlGraph
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.9--3.12-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/Liyurun/SqlGraph/actions/workflows/ci.yml/badge.svg)](https://github.com/Liyurun/SqlGraph/actions/workflows/ci.yml)
 [![SQLGlot](https://img.shields.io/badge/parser-SQLGlot-green.svg)](https://github.com/tobymao/sqlglot)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
@@ -89,7 +89,7 @@ pip install -e .
 pip install sqlgraph-lineage
 ```
 
-Requires Python 3.9+.
+Requires Python 3.9 through 3.12.
 
 ## Quick start
 
@@ -210,7 +210,16 @@ tests/                   # unit + integration tests
 ```bash
 pip install -e ".[all]"
 pytest            # run the test suite
+python scripts/opensource_guard.py
 ```
+
+## Release artifacts
+
+SqlGraph publishes source code on GitHub and Python packages as `sdist` plus
+`wheel` artifacts. The package includes the runtime templates, static assets,
+and demo SQL examples needed by the CLI; generated visualizations, local index
+caches, private datasets, and deployment-specific files are intentionally
+excluded.
 
 ## Contributing
 
@@ -218,4 +227,4 @@ Issues and PRs are welcome. If SqlGraph is useful to you, a ⭐ helps others dis
 
 ## License
 
-[Apache 2.0](LICENSE)
+[MIT](LICENSE)

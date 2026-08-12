@@ -1,5 +1,5 @@
 # Copyright (c) 2026 ByteDance Ltd. and/or its affiliates
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 
 """JSONL index serialization and cache metadata for the Lineage Explorer."""
 from __future__ import annotations
@@ -85,6 +85,69 @@ def build_index(
     return manifest
 
 
+def build_index_from_graph_json(
+    graph_json_path: str,
+    index_dir: str,
+    source_meta: dict[str, Any],
+    log: Optional[Callable[[str], None]] = None,
+) -> dict[str, Any]:
+    """Serialize an existing graph.json into the explorer JSONL index.
+
+    This path is intended for production deployments that mount an already
+    built graph artifact. It avoids reparsing SQL inputs during service startup.
+    """
+    log = log or (lambda _msg: None)
+    os.makedirs(index_dir, exist_ok=True)
+
+    with open(graph_json_path, encoding="utf-8") as f:
+        payload = json.load(f)
+    raw_nodes = payload.get("nodes")
+    raw_edges = payload.get("edges")
+    if not isinstance(raw_nodes, list) or not isinstance(raw_edges, list):
+        raise ValueError("graph.json must contain list fields: nodes and edges")
+
+    node_count = 0
+    sql_count = 0
+    with open(os.path.join(index_dir, "nodes.jsonl"), "w", encoding="utf-8") as nf, \
+         open(os.path.join(index_dir, "sql.jsonl"), "w", encoding="utf-8") as sf:
+        for node in raw_nodes:
+            if not isinstance(node, dict):
+                raise ValueError("graph.json nodes must be objects")
+            nf.write(json.dumps(node, ensure_ascii=False) + "\n")
+            node_count += 1
+            if node.get("node_type") == "sql":
+                sf.write(json.dumps({
+                    "id": node["id"],
+                    "name": node.get("name"),
+                    "source_uri": node.get("source_uri"),
+                    "file_path": node.get("file_path"),
+                    "content_hash": node.get("content_hash"),
+                    "sql_content": node.get("sql_content") or "",
+                }, ensure_ascii=False) + "\n")
+                sql_count += 1
+    log(f"[index] writing nodes.jsonl ... {node_count} nodes")
+
+    edge_count = 0
+    with open(os.path.join(index_dir, "edges.jsonl"), "w", encoding="utf-8") as ef:
+        for edge in raw_edges:
+            if not isinstance(edge, dict):
+                raise ValueError("graph.json edges must be objects")
+            ef.write(json.dumps(edge, ensure_ascii=False) + "\n")
+            edge_count += 1
+    log(f"[index] writing edges.jsonl ... {edge_count} edges")
+    log(f"[index] writing sql.jsonl ... {sql_count} sql")
+
+    manifest = {
+        "version": INDEX_VERSION,
+        "source": dict(source_meta, source_type="graph_json"),
+        "stats": {"nodes": node_count, "edges": edge_count, "sql": sql_count},
+        "built_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+    with open(os.path.join(index_dir, "manifest.json"), "w", encoding="utf-8") as mf:
+        json.dump(manifest, mf, ensure_ascii=False, indent=2)
+    return manifest
+
+
 def _read_jsonl(path: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     if not os.path.isfile(path):
@@ -150,5 +213,27 @@ def prepare_index(
     log(f"[serve] {reason} → building index")
     graph = build_graph(input_path, dialect=dialect)
     build_index(graph, target_dir, source_meta=meta, log=log)
+    log(f"[load]  index ready → {target_dir}")
+    return target_dir
+
+
+def prepare_index_from_graph_json(
+    graph_json_path: str,
+    base_dir: str,
+    rebuild: bool = False,
+    log: Optional[Callable[[str], None]] = None,
+) -> str:
+    """Build or reuse an explorer index for a prebuilt graph.json file."""
+    log = log or (lambda _msg: None)
+    meta = source_fingerprint(graph_json_path)
+    target_dir = index_dir_for(base_dir, dict(meta, source_type="graph_json"))
+
+    if not rebuild and is_cache_valid(target_dir, meta):
+        log(f"[serve-graph] index cache hit → {target_dir}")
+        return target_dir
+
+    reason = "forced rebuild" if rebuild else "cache miss"
+    log(f"[serve-graph] {reason} → indexing graph.json")
+    build_index_from_graph_json(graph_json_path, target_dir, source_meta=meta, log=log)
     log(f"[load]  index ready → {target_dir}")
     return target_dir
