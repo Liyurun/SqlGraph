@@ -10,25 +10,19 @@
 
 - 整条复合表达式（如 ROUND(SUM(clk)/COUNT(*),4)）是一个节点，不再拆成
   sum/div/round 等子节点；
-- 相同逻辑（叶子绑定到相同物理列）跨 SQL 收敛为同一节点；
+- 相同物理列表达式结构跨 SQL 收敛为同一节点；
 - 不同物理列来源的相同逻辑（如 SUM(a.x) vs SUM(b.x)）是不同节点；
-- 交换律算子（+ * AND OR）的操作数排序后再算指纹，a+b 与 b+a 收敛；
 - CAST 的目标类型、函数名、字面量等都纳入指纹，保证可无损区分。
 
 指纹算法：对整棵表达式做一份拷贝，把其中所有列引用替换成"物理列串"（由
-resolve_column 解析），对交换律算子的操作数排序，再用 sqlglot 的
-normalize 序列化成规范字符串，最后 sha1 取指纹。表达式引用到的所有物理
-列作为该节点的依赖来源（source_columns）。
+resolve_column 解析），再用 sqlglot 的 normalize 序列化成规范字符串，
+最后 sha1 取指纹。表达式引用到的所有物理列作为该节点的依赖来源
+（source_columns）。这是保守指纹：只承诺物理列绑定后的同构表达式一致，
+不做交换律、结合律、常量折叠等代数等价推理。
 """
 from __future__ import annotations
 import hashlib
 from sqlglot import exp
-
-
-# 交换律算子的 sqlglot key，操作数排序后再算指纹
-COMMUTATIVE_OPS = {"add", "mul", "and", "or"}
-# 透明包裹节点：不单独成节点，直接下钻到内部表达式
-_TRANSPARENT = (exp.Paren, exp.Ordered, exp.Alias)
 
 
 def _fp(canonical: str) -> str:
@@ -38,16 +32,6 @@ def _fp(canonical: str) -> str:
     64 bit 的碰撞概率已非绝对安全，128 bit 可将碰撞概率压到天文级别可忽略。
     """
     return "expr_" + hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:32]
-
-
-def _depth(node) -> int:
-    """节点在 AST 中的深度（用于自底向上处理交换律排序）"""
-    d = 0
-    p = node.parent
-    while p is not None:
-        d += 1
-        p = p.parent
-    return d
 
 
 def _prepare_copy(node, resolve_column):
@@ -63,37 +47,14 @@ def _prepare_copy(node, resolve_column):
     return copied
 
 
-def _sort_commutative(root) -> None:
-    """对交换律算子的两个操作数按序列化结果排序，实现 a+b == b+a 归一"""
-    targets = [n for n in root.find_all(exp.Expression)
-               if getattr(n, "key", None) in COMMUTATIVE_OPS
-               and n.args.get("this") is not None
-               and n.args.get("expression") is not None]
-    if getattr(root, "key", None) in COMMUTATIVE_OPS and root not in targets \
-            and root.args.get("this") is not None and root.args.get("expression") is not None:
-        targets.append(root)
-    # 深的先处理，保证外层比较时内层已归一
-    targets.sort(key=_depth, reverse=True)
-    for b in targets:
-        left = b.args.get("this")
-        right = b.args.get("expression")
-        if left is None or right is None:
-            continue
-        if left.sql() > right.sql():
-            lc, rc = left.copy(), right.copy()
-            b.set("this", rc)
-            b.set("expression", lc)
-
-
 def _canonical(node, resolve_column, dialect) -> str:
-    """规范字符串：物理列替换 + 交换律排序 + normalize 序列化"""
+    """规范字符串：物理列替换 + SQLGlot normalize 序列化"""
     copied = _prepare_copy(node, resolve_column)
-    _sort_commutative(copied)
     return copied.sql(dialect=dialect, normalize=True, comments=False)
 
 
 def _display(node, resolve_column, dialect) -> str:
-    """展示字符串：物理列替换后的可读 SQL（不做交换律排序）"""
+    """展示字符串：物理列替换后的可读 SQL"""
     copied = _prepare_copy(node, resolve_column)
     return copied.sql(dialect=dialect)
 

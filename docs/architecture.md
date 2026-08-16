@@ -30,16 +30,18 @@ clean boundary, so you can swap or extend any layer independently.
   single **fingerprinted logic node**:
   - all column references inside the expression are replaced with their resolved
     physical-column strings;
-  - commutative operators (`+ * AND OR`) have their operands sorted, so
-    `a + b` and `b + a` produce the same canonical form;
-  - the canonical SQL string is hashed (SHA1, 128-bit) into the fingerprint;
+  - SQLGlot serializes the rewritten expression with `normalize=True`, giving a
+    conservative canonical SQL string without algebraic equivalence inference;
+  - that canonical SQL string is hashed (SHA1, 128-bit) into the fingerprint;
   - every physical column the expression reads is recorded as a dependency.
 
-  This fingerprint identifies identical logic across different SQL files. The
-  builder combines it with the output field name to decide Transform identity, so
-  identical logic only collapses when it produces the same downstream field. A
-  whole composite expression such as `ROUND(SUM(clicks)/COUNT(*), 4)` is **one**
-  node — it is not decomposed into sub-nodes.
+  This fingerprint identifies identical physical-column-bound expression shapes
+  across different SQL files. It intentionally does not treat `a + b` and
+  `b + a` as equivalent. The builder combines the fingerprint with the output
+  field name to decide Transform identity, so identical logic only collapses
+  when it produces the same downstream field. A whole composite expression such
+  as `ROUND(SUM(clicks)/COUNT(*), 4)` is **one** node — it is not decomposed into
+  sub-nodes.
 
 ## 3. Builder (`sqlgraph/builder`)
 

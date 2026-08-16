@@ -104,6 +104,29 @@ def test_expr_dag_same_logic_same_output_field_merged_across_sql():
     assert sum(1 for e in produces_edges if e.source_id == expr_nodes[0].id) == 2
 
 
+def test_expr_dag_commutative_order_is_not_normalized():
+    """V1/V2 保守指纹不做交换律推理，a+b 与 b+a 不应合并"""
+    builder = GraphBuilder(dialect="spark")
+    source = SqlSource.from_string(
+        "INSERT OVERWRITE TABLE a SELECT x + y AS c FROM src",
+        name="s1",
+    )
+    source.add_item(SqlSourceItem(
+        name="s2",
+        content="INSERT OVERWRITE TABLE b SELECT y + x AS c FROM src",
+        source_type="string",
+    ))
+
+    graph = builder.build_from_source(source)
+    expr_nodes = [
+        n for n in graph.nodes
+        if n.node_type.value == "transform" and n.output_name == "c"
+    ]
+
+    assert len(expr_nodes) == 2
+    assert len({n.fingerprint for n in expr_nodes}) == 2
+
+
 def test_composite_expression_single_node():
     """复合表达式整体作为一个节点，不再拆成子表达式"""
     builder = GraphBuilder(dialect="spark")

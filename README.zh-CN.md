@@ -24,7 +24,7 @@ SqlGraph 通过静态解析一整个目录的 SQL，构建出一张属性图。�
 大多数血缘工具止步于"表 A 流向表 B"。SqlGraph 更进一步：
 
 - **逻辑即节点。** 像 `ROUND(SUM(clicks) / COUNT(*), 4)` 这样的复合表达式会成为**一个**转换节点，精确连接它读取的物理列和产出的输出列。
-- **相同逻辑自动去重。** Transform 节点按 `表达式指纹 + 输出字段名` 合并：`SUM(clicks) AS clicks` 的重复定义会收敛，但 `SUM(clicks) AS total_clicks` 会保留为独立节点。交换律算子被归一化，因此 `a + b` 与 `b + a` 收敛。
+- **相同表达式自动去重。** Transform 节点按 `表达式指纹 + 输出字段名` 合并：`SUM(clicks) AS clicks` 的重复定义会收敛，但 `SUM(clicks) AS total_clicks` 会保留为独立节点。当前指纹采用保守规范化，不做交换律、结合律或常量折叠推理。
 - **物理列精确。** `SUM(impression.ad_id)` 与 `SUM(click.ad_id)` 是*不同*节点 —— 身份绑定到解析出的物理列，而非文本相似度。
 - **确定性。** 同样的 SQL 永远生成同样的图和同样的节点 ID，diff 有意义、结果可复现。
 
