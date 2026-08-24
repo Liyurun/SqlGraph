@@ -14,6 +14,7 @@ class PropertyGraph:
         self._nodes: dict = {}
         self._edges: list = []
         self._node_by_name: dict = {}
+        self.metadata: dict[str, Any] = {}
 
     @property
     def nodes(self) -> list:
@@ -114,4 +115,5 @@ class PropertyGraph:
         return {
             "nodes": [n.to_dict() for n in self._nodes.values()],
             "edges": [e.to_dict() for e in self._edges],
+            "metadata": self.metadata,
         }

@@ -23,7 +23,7 @@ from sqlgraph.serve.index_io import (
 from sqlgraph.serve.stats import AnalysisSnapshot, build_index_stats, table_stats
 from sqlgraph.playground import graph_to_playground_payload, find_free_port
 
-_WEB_DIR = os.path.join(os.path.dirname(__file__), "web")
+_WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 _STATIC_DIR = os.path.join(_WEB_DIR, "static")
 _ENV = Environment(loader=FileSystemLoader(_WEB_DIR), autoescape=select_autoescape(["html", "j2"]))
 

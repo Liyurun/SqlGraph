@@ -131,3 +131,81 @@ def decompose(expr, resolve_column, dialect=None):
         }
     }
     return fp, nodes
+
+
+_TRANSPARENT = (exp.Paren, exp.Ordered, exp.Alias)
+_DECOMPOSABLE = (
+    exp.Add,
+    exp.Sub,
+    exp.Mul,
+    exp.Div,
+    exp.Mod,
+    exp.Case,
+    exp.Coalesce,
+    exp.Cast,
+    exp.Round,
+    exp.And,
+    exp.Or,
+    exp.AggFunc,
+    exp.Anonymous,
+    exp.Func,
+)
+
+
+def decompose_operands(expr, resolve_column, dialect=None):
+    """Describe nested expression nodes as child-to-parent operand edges.
+
+    The root fingerprint remains the conservative fingerprint produced by
+    :func:`decompose`. No algebraic equivalence rules are introduced.
+    """
+    root_fp, _ = decompose(expr, resolve_column, dialect)
+    nodes: dict[str, dict] = {}
+    edges: list[tuple[str, str]] = []
+    seen_edges: set[tuple[str, str]] = set()
+
+    def register(node) -> str:
+        canonical = _canonical(node, resolve_column, dialect)
+        fingerprint = _fp(canonical)
+        if fingerprint not in nodes:
+            columns = (
+                [node]
+                if isinstance(node, exp.Column)
+                else list(node.find_all(exp.Column))
+            )
+            source_columns = []
+            seen_columns = set()
+            for column in columns:
+                physical = resolve_column(column)
+                if physical not in seen_columns:
+                    seen_columns.add(physical)
+                    source_columns.append(physical)
+            nodes[fingerprint] = {
+                "fingerprint": fingerprint,
+                "op": getattr(node, "key", "expr"),
+                "expr_type": classify_expr_type(node),
+                "expression": _display(node, resolve_column, dialect),
+                "canonical": canonical,
+                "source_columns": source_columns,
+            }
+        return fingerprint
+
+    def walk(node, parent_fingerprint: str) -> None:
+        while isinstance(node, _TRANSPARENT):
+            inner = node.args.get("this")
+            if inner is None:
+                return
+            node = inner
+        if not isinstance(node, _DECOMPOSABLE):
+            return
+        fingerprint = register(node)
+        edge = (fingerprint, parent_fingerprint)
+        if fingerprint != parent_fingerprint and edge not in seen_edges:
+            seen_edges.add(edge)
+            edges.append(edge)
+        for child in node.iter_expressions():
+            walk(child, fingerprint)
+
+    register(expr)
+    for child in expr.iter_expressions():
+        walk(child, root_fp)
+    return root_fp, nodes, edges
