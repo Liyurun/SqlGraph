@@ -26,6 +26,21 @@ from sqlgraph.model import PropertyGraph, NodeType
 from sqlgraph.utils.logging import log_info
 
 
+def evidence_to_context(evidence) -> Dict[str, Any]:
+    """Serialize only the graph facts allowed by an evidence bundle."""
+    return {
+        "baseline_id": evidence.baseline_id,
+        "evidence_hash": evidence.subgraph_hash,
+        "intent": evidence.intent,
+        "anchors": list(evidence.anchors),
+        "allowed_node_ids": list(evidence.included_nodes),
+        "allowed_edge_ids": list(evidence.included_edges),
+        "coverage_contract": evidence.coverage_contract,
+        "gaps": list(evidence.gaps),
+        "residual_unknowns": list(evidence.residual_unknowns),
+    }
+
+
 def to_graphrag(graph: PropertyGraph, output_path: str) -> Dict[str, Any]:
     """将图输出为 GraphRAG entity/relation payload 格式（schema v2）
 
