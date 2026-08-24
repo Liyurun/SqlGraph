@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 import hashlib
 from importlib import import_module
 import math
-import random
+import random  # allow-random: deterministic analysis sampling uses an explicit seed
 from typing import Any, Mapping
 
 from sqlgraph.analyze.config import AnalysisConfig
