@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Liyurun/SqlGraph/schemas/verification-report-v1.schema.json",
+  "title": "SqlGraph Verification Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "code",
+    "structure",
+    "runtime",
+    "outcome",
+    "closed_loop_status"
+  ],
+  "properties": {
+    "schema_version": {"const": "verification-report-v1"},
+    "code": {"$ref": "#/$defs/layer"},
+    "structure": {"$ref": "#/$defs/layer"},
+    "runtime": {"$ref": "#/$defs/layer"},
+    "outcome": {"enum": ["success", "failed", "incomplete"]},
+    "closed_loop_status": {"enum": ["success", "failed", "incomplete"]}
+  },
+  "$defs": {
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer", "status", "evidence", "note"],
+      "properties": {
+        "layer": {"type": "string"},
+        "status": {"enum": ["pass", "fail", "not_run"]},
+        "evidence": {"type": "object"},
+        "note": {"type": "string"}
+      }
+    }
+  }
+}
