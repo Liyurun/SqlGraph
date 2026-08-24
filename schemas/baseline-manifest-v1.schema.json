@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Liyurun/SqlGraph/schemas/baseline-manifest-v1.schema.json",
+  "title": "SqlGraph Baseline Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "baseline_id",
+    "source_hashes",
+    "dialect",
+    "parser_version",
+    "identity_rule_version",
+    "dependency_hashes",
+    "missing_dependencies",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "baseline-manifest-v1"
+    },
+    "baseline_id": {
+      "type": "string",
+      "pattern": "^base_[0-9a-f]{64}$"
+    },
+    "source_hashes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "source_type", "source_path", "sha256"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "source_type": {"type": "string", "minLength": 1},
+          "source_path": {"type": "string"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "dialect": {"type": "string"},
+    "parser_version": {"type": "string", "minLength": 1},
+    "identity_rule_version": {"type": "string", "minLength": 1},
+    "dependency_hashes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "missing_dependencies": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["schema", "udf_manifest", "parameters", "scheduler_manifest"]
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

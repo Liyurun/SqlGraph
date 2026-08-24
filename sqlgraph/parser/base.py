@@ -3,7 +3,6 @@
 
 # sqlgraph/parser/base.py
 from __future__ import annotations
-import uuid
 import hashlib
 import re
 from typing import Optional
@@ -11,6 +10,7 @@ import sqlglot
 from sqlglot import exp
 from sqlgraph.utils.logging import log_info, log_warn
 from sqlgraph.input.csv_schema import SchemaRegistry
+from sqlgraph.identity import node_id
 from sqlgraph.utils.errors import SqlParseError
 from sqlgraph.parser import expr_dag
 
@@ -71,18 +71,6 @@ class ColumnResolver:
         return f"{UNKNOWN_TABLE}.{col_name}"
 
 
-def _gen_id(prefix: str = "n") -> str:
-    """生成唯一节点 ID
-    
-    Args:
-        prefix: ID 前缀，默认为 "n"
-    
-    Returns:
-        唯一 ID 字符串，格式为 "{prefix}_{8位十六进制随机数}"
-    """
-    return f"{prefix}_{uuid.uuid4().hex[:8]}"
-
-
 class SqlParseResult:
     """单条 SQL 解析结果
     
@@ -113,6 +101,7 @@ class SqlParseResult:
         self.cte_tables: list[dict] = []
         self.columns: list[dict] = []
         self.errors: list[str] = []
+        self.statement_io: list[dict] = []
 
 
 class SqlParser:
@@ -150,7 +139,10 @@ class SqlParser:
             SqlParseError: SQL 解析失败时抛出
         """
         result = SqlParseResult()
-        result.sql_id = _gen_id("sql")
+        result.sql_id = node_id(
+            "sql",
+            f"{file_path or name}::{self.dialect or ''}::{sql}",
+        )
         result.sql_name = name
         result.sql_content = sql
         result.file_path = file_path
@@ -166,10 +158,30 @@ class SqlParser:
             statements = sqlglot.parse(sql, read=self.dialect)
         except Exception as e:
             raise SqlParseError(f"Failed to parse SQL: {e}", sql=sql, file_path=file_path)
+        stmt_index = 0
         for stmt in statements:
             if stmt is None:
                 continue
+            self._cte_aliases = {}
+            self._relation_aliases = {}
+            self._cte_relation_names = set()
+            self._current_source_tables = []
+            self._current_all_sources = []
+            self._parsed_derived_queries = set()
+            source_start = len(result.source_tables)
+            target_start = len(result.target_tables)
+            self._statement_source_start = source_start
             self._parse_statement(stmt, result)
+            result.statement_io.append({
+                "stmt_index": stmt_index,
+                "sources": [
+                    dict(entry) for entry in result.source_tables[source_start:]
+                ],
+                "targets": [
+                    dict(entry) for entry in result.target_tables[target_start:]
+                ],
+            })
+            stmt_index += 1
         return result
 
     def _parse_statement(self, stmt, result: SqlParseResult) -> None:
@@ -350,7 +362,12 @@ class SqlParser:
                 elif alias and alias != tname:
                     self._relation_aliases[alias] = tname
                 is_cte = tname in self._cte_relation_names
-            already_added = any(t["name"] == tname and t.get("alias") == alias for t in result.source_tables)
+            already_added = any(
+                t["name"] == tname and t.get("alias") == alias
+                for t in result.source_tables[
+                    getattr(self, "_statement_source_start", 0):
+                ]
+            )
             already_in_target = any(t["name"] == tname for t in result.target_tables)
             if not already_added and not already_in_target:
                 result.source_tables.append({"name": tname, "alias": alias, "is_cte": is_cte})
@@ -421,12 +438,15 @@ class SqlParser:
                 "physical_column": None,
                 "expr_root": None,
                 "expr_nodes": {},
+                "operand_nodes": {},
+                "operand_edges": [],
             }
 
             if lateral_source:
                 root_fp, nodes = expr_dag.decompose(dag_expr, resolver.resolve, dialect=self.dialect or None)
                 col_entry["expr_root"] = root_fp
                 col_entry["expr_nodes"] = nodes
+                self._fill_operands(col_entry, dag_expr, resolver)
             elif not lateral_match and expr_dag.is_passthrough(inner):
                 # 纯透传列：不建表达式节点，直接记录物理列
                 col_entry["passthrough"] = True
@@ -435,8 +455,28 @@ class SqlParser:
                 root_fp, nodes = expr_dag.decompose(dag_expr, resolver.resolve, dialect=self.dialect or None)
                 col_entry["expr_root"] = root_fp
                 col_entry["expr_nodes"] = nodes
+                self._fill_operands(col_entry, dag_expr, resolver)
 
             result.columns.append(col_entry)
+
+    def _fill_operands(
+        self,
+        col_entry: dict,
+        expression,
+        resolver: ColumnResolver,
+    ) -> None:
+        """Record nested expression relationships without changing root identity."""
+        try:
+            _, nodes, edges = expr_dag.decompose_operands(
+                expression,
+                resolver.resolve,
+                dialect=self.dialect or None,
+            )
+        except Exception as exc:
+            log_warn(f"operand decomposition skipped: {exc}")
+            return
+        col_entry["operand_nodes"] = nodes
+        col_entry["operand_edges"] = edges
 
     def _analyze_expression(self, expr) -> dict:
         """分析表达式类型

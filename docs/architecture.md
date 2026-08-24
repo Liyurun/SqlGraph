@@ -94,3 +94,24 @@ An in-memory **`PropertyGraph`** of typed nodes and edges.
   text, so lookalike expressions on different columns stay distinct.
 - **Scale** — 96/128-bit fingerprints keep collisions negligible even for
   warehouses with millions of columns.
+
+## Governance reference pipeline
+
+The governance modules build on the graph without coupling the compiler to an
+execution environment:
+
+```text
+Baseline -> HeteroGraph/TableGraph -> Evidence/Grounding -> Autonomy
+         -> Action Adapter -> Independent Verification -> Audit Replay
+```
+
+- `baseline` identifies the effective input and discloses missing dependencies.
+- `evidence` collects an intent-bound, versioned subgraph with coverage duties.
+- `graphrag` rejects assertions with missing, stale, or out-of-scope citations.
+- `autonomy` applies evidence, authorization, and reversibility gates before scoring.
+- `actions` provides idempotent file and DuckDB adapters with verified rollback.
+- `verification` compares actual code, rebuilds structure, and checks runtime effects.
+- `audit` appends hash-chained events; `reasoning` orchestrates the seven steps.
+
+No analysis score directly authorizes an action. The action and verification
+adapters are explicit seams for production integrations.

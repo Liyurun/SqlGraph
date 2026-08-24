@@ -38,6 +38,9 @@ class TableGraphEdge:
     target_id: str
     field_weight: int = 0
     sql_weight: int = 0
+    statement_refs: tuple[tuple[str, int], ...] = ()
+    column_dependency_ids: tuple[str, ...] = ()
+    transform_ids: tuple[str, ...] = ()
 
     @property
     def total_weight(self) -> int:
@@ -117,6 +120,9 @@ class TableGraph:
                     "target_id": e.target_id,
                     "field_weight": e.field_weight,
                     "sql_weight": e.sql_weight,
+                    "statement_refs": [list(ref) for ref in e.statement_refs],
+                    "column_dependency_ids": list(e.column_dependency_ids),
+                    "transform_ids": list(e.transform_ids),
                 }
                 for e in self.edges
             ],
@@ -177,6 +183,8 @@ def build_table_graph(view: AnalysisView) -> TableGraph:
 
     # ── 3. Field weight ─────────────────────────────────────────────────
     field_weight: dict[tuple[str, str], int] = {}
+    field_edge_ids: dict[tuple[str, str], set[str]] = {}
+    transform_ids: dict[tuple[str, str], set[str]] = {}
 
     # Index: transform_id → output column_id
     transform_output: dict[str, str] = {}
@@ -203,6 +211,7 @@ def build_table_graph(view: AnalysisView) -> TableGraph:
             if tgt_table is not None and tgt_table != src_table:
                 key = (src_table, tgt_table)
                 field_weight[key] = field_weight.get(key, 0) + 1
+                field_edge_ids.setdefault(key, set()).add(str(edge["id"]))
 
         elif tgt_type == "transform":
             # Transform: source_column → transform → output_column
@@ -212,31 +221,37 @@ def build_table_graph(view: AnalysisView) -> TableGraph:
                 if tgt_table is not None and tgt_table != src_table:
                     key = (src_table, tgt_table)
                     field_weight[key] = field_weight.get(key, 0) + 1
+                    field_edge_ids.setdefault(key, set()).add(str(edge["id"]))
+                    transform_ids.setdefault(key, set()).add(tgt_id)
 
     # ── 4. SQL weight ───────────────────────────────────────────────────
     sql_weight: dict[tuple[str, str], int] = {}
-    sql_reads: dict[str, set[str]] = {}
-    sql_writes: dict[str, set[str]] = {}
+    sql_reads: dict[tuple[str, int], set[str]] = {}
+    sql_writes: dict[tuple[str, int], set[str]] = {}
+    statement_refs: dict[tuple[str, str], set[tuple[str, int]]] = {}
 
     for edge in view.iter_edges("reads_from"):
         sql_id = str(edge["source"])
+        statement_key = (sql_id, int(edge.get("stmt_index", 0)))
         table_id = str(edge["target"])
         if table_id in physical:
-            sql_reads.setdefault(sql_id, set()).add(table_id)
+            sql_reads.setdefault(statement_key, set()).add(table_id)
 
     for edge in view.iter_edges("writes_to"):
         sql_id = str(edge["source"])
+        statement_key = (sql_id, int(edge.get("stmt_index", 0)))
         table_id = str(edge["target"])
         if table_id in physical:
-            sql_writes.setdefault(sql_id, set()).add(table_id)
+            sql_writes.setdefault(statement_key, set()).add(table_id)
 
-    for sql_id, reads in sql_reads.items():
-        writes = sql_writes.get(sql_id, set())
+    for statement_key, reads in sql_reads.items():
+        writes = sql_writes.get(statement_key, set())
         for src_tbl in reads:
             for tgt_tbl in writes:
                 if src_tbl != tgt_tbl:
                     key = (src_tbl, tgt_tbl)
                     sql_weight[key] = sql_weight.get(key, 0) + 1
+                    statement_refs.setdefault(key, set()).add(statement_key)
 
     # ── 5. Seed edge set from TABLE_LINEAGE and overlay weights ─────────
     edge_registry: dict[tuple[str, str], dict[str, int]] = {}
@@ -248,6 +263,12 @@ def build_table_graph(view: AnalysisView) -> TableGraph:
             edge_registry.setdefault(
                 (src_id, tgt_id), {"field_weight": 0, "sql_weight": 0}
             )
+            for ref in edge.get("provenance", ()):
+                sql_id = ref.get("sql_id")
+                if sql_id:
+                    statement_refs.setdefault((src_id, tgt_id), set()).add(
+                        (str(sql_id), int(ref.get("stmt_index", 0)))
+                    )
 
     # Overlay field weights (may introduce edges not in TABLE_LINEAGE)
     for (src, tgt), fw in field_weight.items():
@@ -279,6 +300,9 @@ def build_table_graph(view: AnalysisView) -> TableGraph:
             target_id=tgt,
             field_weight=weights["field_weight"],
             sql_weight=weights["sql_weight"],
+            statement_refs=tuple(sorted(statement_refs.get((src, tgt), set()))),
+            column_dependency_ids=tuple(sorted(field_edge_ids.get((src, tgt), set()))),
+            transform_ids=tuple(sorted(transform_ids.get((src, tgt), set()))),
         )
         edge_list.append(e)
         adjacency_builder.setdefault(src, []).append(e)

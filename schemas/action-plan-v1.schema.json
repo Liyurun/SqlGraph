@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Liyurun/SqlGraph/schemas/action-plan-v1.schema.json",
+  "title": "SqlGraph Action Plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "baseline_id",
+    "evidence_version",
+    "decision_id",
+    "adapter",
+    "operations",
+    "rollback_plan",
+    "idempotency_key"
+  ],
+  "properties": {
+    "schema_version": {"const": "action-plan-v1"},
+    "task_id": {"type": "string", "minLength": 1},
+    "baseline_id": {"type": "string", "minLength": 1},
+    "evidence_version": {"type": "string", "minLength": 1},
+    "decision_id": {"type": "string", "minLength": 1},
+    "adapter": {"type": "string", "minLength": 1},
+    "operations": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+    "rollback_plan": {"type": "array", "items": {"type": "object"}},
+    "idempotency_key": {"type": "string", "pattern": "^idem_[0-9a-f]{32}$"}
+  }
+}

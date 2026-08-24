@@ -1,0 +1,29 @@
+task_id: book-drop-001
+intent: destructive_governance
+dialect: duckdb
+sql_file: query.sql
+source_table: critical_orders
+target_table: critical_orders_archive
+parameters: {}
+udf_manifest: {}
+scheduler_manifest: {}
+action:
+  type: drop_table
+  adapter: sql_file_patch
+  authorization_scope: continuous_l5
+  authorization_identity: book-demo-policy
+  blast_radius: 0.1
+  object_risk: 0.1
+  historical_reliability: 1.0
+  roi: 1.0
+  reversibility:
+    state_restorable: false
+    external_effects_controlled: false
+    rollback_verified: false
+    references: []
+  after: |
+    DROP TABLE critical_orders;
+runtime:
+  checks_passed: false
+  reports_recomputed: false
+  new_alerts: 0

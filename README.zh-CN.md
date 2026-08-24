@@ -54,7 +54,7 @@ pip install -e .
 pip install sqlgraph-lineage
 ```
 
-需要 Python 3.9 到 3.12。
+需要 Python 3.10 到 3.12。
 
 ## 快速开始
 
@@ -94,6 +94,19 @@ sqlgraph playground
 # 仅打印统计信息，不写文件
 sqlgraph stats ./sql --dialect spark
 ```
+
+### 证据约束治理 Quickstart
+
+```bash
+sqlgraph governance run examples/minimal/scenario.yaml -o demo_output/minimal
+sqlgraph governance verify demo_output/minimal
+sqlgraph governance replay demo_output/minimal/audit.jsonl
+```
+
+输出包含确定性输入基线、图快照、证据包、自治决议、动作结果、独立验证报告，
+以及带哈希链的七步审计日志。所有对外能力的状态与测试证据见
+[`CAPABILITIES.yaml`](CAPABILITIES.yaml)，支持边界见
+[`docs/limitations.md`](docs/limitations.md)。
 
 ### 血缘检索浏览器（检索 + 局部子图）
 

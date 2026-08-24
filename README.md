@@ -89,7 +89,7 @@ pip install -e .
 pip install sqlgraph-lineage
 ```
 
-Requires Python 3.9 through 3.12.
+Requires Python 3.10 through 3.12.
 
 ## Quick start
 
@@ -129,6 +129,22 @@ sqlgraph playground
 # Just print stats, no files written
 sqlgraph stats ./sql --dialect spark
 ```
+
+### Evidence-bound governance quickstart
+
+Run the minimal book scenario and verify its complete evidence package:
+
+```bash
+sqlgraph governance run examples/minimal/scenario.yaml -o demo_output/minimal
+sqlgraph governance verify demo_output/minimal
+sqlgraph governance replay demo_output/minimal/audit.jsonl
+```
+
+The output contains the deterministic input baseline, graph snapshot, evidence
+bundle, autonomy decision, action result, independent verification report, and a
+hash-chained seven-step audit log. See [CAPABILITIES.yaml](CAPABILITIES.yaml) for
+the status and test evidence of every advertised capability, and
+[docs/limitations.md](docs/limitations.md) for the supported boundary.
 
 ### Lineage Explorer (search + local subgraphs)
 

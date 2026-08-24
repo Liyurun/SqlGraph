@@ -20,6 +20,7 @@ wheels/
 *.egg
 .pytest_cache/
 .coverage
+coverage.json
 htmlcov/
 .tox/
 .venv
@@ -49,6 +50,12 @@ output_csv/
 sqlgraph_output/
 failed_cases.json
 smoke_result.json
+*.duckdb
+.benchmarks/
+comparison-screenshots/
+generated_illustrations*/
+/book*/
+*.zip
 
 # Large or private local datasets
 df.csv

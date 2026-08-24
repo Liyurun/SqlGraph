@@ -1,0 +1,86 @@
+schema_version: capabilities-v1
+capabilities:
+  - id: input-baseline
+    status: implemented
+    description: Versioned SQL, dialect, schema, UDF, parameter, and scheduler baseline.
+    modules: [sqlgraph/baseline, sqlgraph/input]
+    tests: [tests/contract/test_baseline_manifest.py]
+    examples: [examples/minimal/scenario.yaml]
+    limitations: [Dynamic SQL must be materialized before parsing.]
+  - id: deterministic-sql-compiler
+    status: implemented
+    description: Statement-aware SQLGlot compilation with stable graph identities.
+    modules: [sqlgraph/parser, sqlgraph/builder, sqlgraph/identity]
+    tests: [tests/test_identity/test_determinism.py, tests/test_parser]
+    examples: [examples/ads_pipeline]
+    limitations: [Unresolvable multi-source columns are marked UNKNOWN.]
+  - id: two-level-graph
+    status: implemented
+    description: Heterogeneous graph plus reconstructable physical TableGraph projection.
+    modules: [sqlgraph/model, sqlgraph/analyze/table_graph.py, sqlgraph/lineage]
+    tests: [tests/test_graph_advanced/test_drilldown.py]
+    examples: [examples/video_commercial_warehouse]
+    limitations: [Nested struct fields remain attached to top-level physical columns.]
+  - id: evidence-subgraph
+    status: implemented
+    description: Intent-bound evidence collection, expansion, versioning, and stable hashes.
+    modules: [sqlgraph/evidence]
+    tests: [tests/test_evidence/test_engine.py]
+    examples: [examples/book_cases/caliber_consistency]
+    limitations: [External facts must be supplied by the caller.]
+  - id: evidence-discipline
+    status: implemented
+    description: Coverage obligations, counterevidence, exclusions, gaps, and residual unknowns.
+    modules: [sqlgraph/evidence]
+    tests: [tests/safety/test_evidence_gates.py]
+    examples: [examples/book_cases/caliber_consistency]
+    limitations: [Counterevidence search is structural rather than semantic.]
+  - id: offline-governance-metrics
+    status: implemented
+    description: Versioned inventory, topology, impact, consistency, similarity, motif, and anomaly analysis.
+    modules: [sqlgraph/analyze, sqlgraph/metrics]
+    tests: [tests/test_analyze]
+    examples: [examples/ads_pipeline]
+    limitations: [Optional embedding and model-based anomaly metrics require extras.]
+  - id: seven-step-loop
+    status: implemented
+    description: Observe, Explain, Propose, Authorize, Execute, Verify, and Learn orchestration.
+    modules: [sqlgraph/reasoning, sqlgraph/agent]
+    tests: [tests/test_reasoning/test_runner.py]
+    examples: [examples/minimal/scenario.yaml]
+    limitations: [Learn writes signals only and never expands authorization.]
+  - id: autonomy-policy
+    status: implemented
+    description: Evidence, authorization, reversibility, impact, risk, and reliability gates.
+    modules: [sqlgraph/autonomy]
+    tests: [tests/test_autonomy, tests/safety/test_autonomy_gates.py]
+    examples: [examples/book_cases/irreversible_drop]
+    limitations: [Thresholds are reference defaults and must be calibrated per deployment.]
+  - id: reversible-actions
+    status: implemented
+    description: Idempotent file and DuckDB actions with dry run, circuit breaker, and verified rollback.
+    modules: [sqlgraph/actions]
+    tests: [tests/test_actions, tests/safety/test_execution_recovery.py]
+    examples: [examples/book_cases/cold_table_retirement]
+    limitations: [Only local SQL files and DuckDB are included adapters.]
+  - id: three-layer-verification
+    status: implemented
+    description: Actual code comparison, independent graph rebuild, and runtime checks.
+    modules: [sqlgraph/verification, sqlgraph/verify]
+    tests: [tests/test_verification, tests/safety/test_verification_failure.py]
+    examples: [examples/book_cases/caliber_consistency]
+    limitations: [Production runtime checks require a deployment-specific adapter.]
+  - id: graphrag-grounding
+    status: implemented
+    description: Assertion-to-citation validation constrained by baseline and evidence versions.
+    modules: [sqlgraph/graphrag, sqlgraph/serialize/graphrag.py]
+    tests: [tests/test_graphrag]
+    examples: [examples/minimal/scenario.yaml]
+    limitations: [The repository validates supplied assertions but does not bundle an LLM.]
+  - id: audit-replay
+    status: implemented
+    description: Append-only hash-chained events with integrity verification and task replay.
+    modules: [sqlgraph/audit]
+    tests: [tests/test_audit, tests/safety/test_audit_integrity.py]
+    examples: [examples/minimal/scenario.yaml]
+    limitations: [Local JSONL storage is a reference adapter, not a distributed ledger.]

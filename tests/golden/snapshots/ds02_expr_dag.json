@@ -1,0 +1,361 @@
+{
+  "counts": {
+    "by_edge_type": {
+      "compute_dependency": 12,
+      "contains": 3,
+      "expr_operand": 4,
+      "has_column": 11,
+      "produces": 3,
+      "reads_from": 1,
+      "table_lineage": 1,
+      "writes_to": 1
+    },
+    "by_node_type": {
+      "column": 11,
+      "sql": 1,
+      "table": 2,
+      "transform": 7
+    },
+    "edges": 36,
+    "nodes": 21
+  },
+  "coverage": {
+    "failed": 0,
+    "ok": 1,
+    "partial": 0,
+    "reasons": [],
+    "total": 1
+  },
+  "edges": [
+    {
+      "id": "e_021306f738dcf9883fa20c90",
+      "source": "tbl_fe3101537f9d6bca4e1bb3ac",
+      "target": "col_a23914f6b90d25b34b044275",
+      "type": "has_column"
+    },
+    {
+      "id": "e_0ef9a9ff24ce0cf8848f6383",
+      "source": "tbl_fe3101537f9d6bca4e1bb3ac",
+      "target": "col_06441fde90754757b5779ff8",
+      "type": "has_column"
+    },
+    {
+      "id": "e_12e82a860777ffd438e21808",
+      "source": "tbl_85ac6b96dd07668776b1d8d0",
+      "target": "col_ff170de8698fcb6322f09c03",
+      "type": "has_column"
+    },
+    {
+      "id": "e_1dba84392366e8a82a9de95c",
+      "source": "expr_68cb1c8d5cca5b5bbaef2abf",
+      "target": "expr_b939fff64b4305a6be94666d",
+      "type": "expr_operand"
+    },
+    {
+      "id": "e_21ea0f639c994f553d9e81b5",
+      "source": "tbl_85ac6b96dd07668776b1d8d0",
+      "target": "col_8dccb2b9f470ee0ecba471d1",
+      "type": "has_column"
+    },
+    {
+      "id": "e_27ee14f0872f9e6fa17962a7",
+      "source": "sql_9066d2306662ed7af1d2b961",
+      "target": "expr_b939fff64b4305a6be94666d",
+      "type": "contains"
+    },
+    {
+      "id": "e_2dd8e02b2ab8b1103bd53b2a",
+      "source": "col_5e0f941f7f808d1ca3365fd9",
+      "target": "expr_488bc78483e98125d5304322",
+      "type": "compute_dependency"
+    },
+    {
+      "id": "e_2e7e7ab2bc3986f2c050d01f",
+      "source": "tbl_85ac6b96dd07668776b1d8d0",
+      "target": "col_85e98bfdc4fe7d6e5f3708eb",
+      "type": "has_column"
+    },
+    {
+      "id": "e_2fde1e1265c72ca7038cf24c",
+      "source": "tbl_fe3101537f9d6bca4e1bb3ac",
+      "target": "col_149da087f5665bf7e61e4c1c",
+      "type": "has_column"
+    },
+    {
+      "id": "e_3bda680c89ae550062f43d8b",
+      "source": "expr_812be1f3f3d52bd14a76039a",
+      "target": "expr_488bc78483e98125d5304322",
+      "type": "expr_operand"
+    },
+    {
+      "id": "e_3c2fa00f5348447844b686b2",
+      "source": "col_a23914f6b90d25b34b044275",
+      "target": "expr_812be1f3f3d52bd14a76039a",
+      "type": "compute_dependency"
+    },
+    {
+      "id": "e_509aab5983b1cb923e0070b4",
+      "source": "sql_9066d2306662ed7af1d2b961",
+      "target": "expr_1ea1f4c4f29fc1dbdcb93e5d",
+      "type": "contains"
+    },
+    {
+      "id": "e_52672dba211992297dea4bc9",
+      "source": "tbl_fe3101537f9d6bca4e1bb3ac",
+      "target": "tbl_85ac6b96dd07668776b1d8d0",
+      "type": "table_lineage"
+    },
+    {
+      "id": "e_55546c2d70b1f4bdef6d58c5",
+      "source": "tbl_fe3101537f9d6bca4e1bb3ac",
+      "target": "col_e77b072519bb386d30d7cfaa",
+      "type": "has_column"
+    },
+    {
+      "id": "e_5d710a8307dab802db300bfb",
+      "source": "col_06441fde90754757b5779ff8",
+      "target": "expr_b939fff64b4305a6be94666d",
+      "type": "compute_dependency"
+    },
+    {
+      "id": "e_6120a29442d45ee25afa3158",
+      "source": "col_06441fde90754757b5779ff8",
+      "target": "expr_68cb1c8d5cca5b5bbaef2abf",
+      "type": "compute_dependency"
+    },
+    {
+      "id": "e_68aa31b63cad7b5fce7d499e",
+      "source": "tbl_fe3101537f9d6bca4e1bb3ac",
+      "target": "col_5e0f941f7f808d1ca3365fd9",
+      "type": "has_column"
+    },
+    {
+      "id": "e_6b53dcfee604c0bf7ac80e34",
+      "source": "col_e77b072519bb386d30d7cfaa",
+      "target": "expr_1ea1f4c4f29fc1dbdcb93e5d",
+      "type": "compute_dependency"
+    },
+    {
+      "id": "e_6fdab75d13882dc97667159c",
+      "source": "sql_9066d2306662ed7af1d2b961",
+      "target": "tbl_85ac6b96dd07668776b1d8d0",
+      "type": "writes_to"
+    },
+    {
+      "id": "e_72b69ebb962fa9dc0caadddc",
+      "source": "col_16fd262a31187c551aa344aa",
+      "target": "col_ff170de8698fcb6322f09c03",
+      "type": "compute_dependency"
+    },
+    {
+      "id": "e_77e5b66f499949715c3b7d6e",
+      "source": "col_e77b072519bb386d30d7cfaa",
+      "target": "expr_e20560a9236b4cfc39bae28a",
+      "type": "compute_dependency"
+    },
+    {
+      "id": "e_7a9547dd3d785f7632e84562",
+      "source": "sql_9066d2306662ed7af1d2b961",
+      "target": "expr_488bc78483e98125d5304322",
+      "type": "contains"
+    },
+    {
+      "id": "e_7b91a7768f4b366c6d49abae",
+      "source": "col_149da087f5665bf7e61e4c1c",
+      "target": "expr_3f37b8f2db622b1703c5c247",
+      "type": "compute_dependency"
+    },
+    {
+      "id": "e_82508f99ad58af050c512684",
+      "source": "expr_3f37b8f2db622b1703c5c247",
+      "target": "expr_b939fff64b4305a6be94666d",
+      "type": "expr_operand"
+    },
+    {
+      "id": "e_9ccd2c2cfd22b2e2d515ed63",
+      "source": "col_f69747bb922872b593a5d822",
+      "target": "expr_488bc78483e98125d5304322",
+      "type": "compute_dependency"
+    },
+    {
+      "id": "e_c7abcddf920e6c37669a0ffc",
+      "source": "tbl_fe3101537f9d6bca4e1bb3ac",
+      "target": "col_f69747bb922872b593a5d822",
+      "type": "has_column"
+    },
+    {
+      "id": "e_cb775580d8026326a4e3ff4e",
+      "source": "col_a23914f6b90d25b34b044275",
+      "target": "expr_488bc78483e98125d5304322",
+      "type": "compute_dependency"
+    },
+    {
+      "id": "e_e22b74163c48a5a4c1d88fff",
+      "source": "sql_9066d2306662ed7af1d2b961",
+      "target": "tbl_fe3101537f9d6bca4e1bb3ac",
+      "type": "reads_from"
+    },
+    {
+      "id": "e_e424776d679aad8217505fc1",
+      "source": "col_f69747bb922872b593a5d822",
+      "target": "expr_812be1f3f3d52bd14a76039a",
+      "type": "compute_dependency"
+    },
+    {
+      "id": "e_e727e8c8a1f7a9f2174f7bcf",
+      "source": "tbl_fe3101537f9d6bca4e1bb3ac",
+      "target": "col_16fd262a31187c551aa344aa",
+      "type": "has_column"
+    },
+    {
+      "id": "e_e8fba91214acf9611925c435",
+      "source": "col_149da087f5665bf7e61e4c1c",
+      "target": "expr_b939fff64b4305a6be94666d",
+      "type": "compute_dependency"
+    },
+    {
+      "id": "e_e967ce9349688759acb6459e",
+      "source": "expr_488bc78483e98125d5304322",
+      "target": "col_8dccb2b9f470ee0ecba471d1",
+      "type": "produces"
+    },
+    {
+      "id": "e_ed0541a41cb86f5c76b511ef",
+      "source": "expr_1ea1f4c4f29fc1dbdcb93e5d",
+      "target": "col_582a1f3a8283948df3934583",
+      "type": "produces"
+    },
+    {
+      "id": "e_ef588380240d5490fd893cfc",
+      "source": "expr_b939fff64b4305a6be94666d",
+      "target": "col_85e98bfdc4fe7d6e5f3708eb",
+      "type": "produces"
+    },
+    {
+      "id": "e_f6ee19c00fde0cb87b6940f2",
+      "source": "tbl_85ac6b96dd07668776b1d8d0",
+      "target": "col_582a1f3a8283948df3934583",
+      "type": "has_column"
+    },
+    {
+      "id": "e_f704063542c940b5422b0f05",
+      "source": "expr_e20560a9236b4cfc39bae28a",
+      "target": "expr_1ea1f4c4f29fc1dbdcb93e5d",
+      "type": "expr_operand"
+    }
+  ],
+  "identity_rule_version": "id-v2",
+  "nodes": [
+    {
+      "id": "col_06441fde90754757b5779ff8",
+      "name": "pay_amount",
+      "type": "column"
+    },
+    {
+      "id": "col_149da087f5665bf7e61e4c1c",
+      "name": "refund_amount",
+      "type": "column"
+    },
+    {
+      "id": "col_16fd262a31187c551aa344aa",
+      "name": "user_id",
+      "type": "column"
+    },
+    {
+      "id": "col_582a1f3a8283948df3934583",
+      "name": "status",
+      "type": "column"
+    },
+    {
+      "id": "col_5e0f941f7f808d1ca3365fd9",
+      "name": "weight",
+      "type": "column"
+    },
+    {
+      "id": "col_85e98bfdc4fe7d6e5f3708eb",
+      "name": "net_amount",
+      "type": "column"
+    },
+    {
+      "id": "col_8dccb2b9f470ee0ecba471d1",
+      "name": "total_score",
+      "type": "column"
+    },
+    {
+      "id": "col_a23914f6b90d25b34b044275",
+      "name": "bonus_score",
+      "type": "column"
+    },
+    {
+      "id": "col_e77b072519bb386d30d7cfaa",
+      "name": "active_days",
+      "type": "column"
+    },
+    {
+      "id": "col_f69747bb922872b593a5d822",
+      "name": "base_score",
+      "type": "column"
+    },
+    {
+      "id": "col_ff170de8698fcb6322f09c03",
+      "name": "user_id",
+      "type": "column"
+    },
+    {
+      "id": "expr_1ea1f4c4f29fc1dbdcb93e5d",
+      "name": "CASE WHEN dwd_user_metric_di.active_days >= 7 THEN 'active' ELSE 'inactive' END",
+      "type": "transform"
+    },
+    {
+      "id": "expr_3f37b8f2db622b1703c5c247",
+      "name": "COALESCE(dwd_user_metric_di.refund_amount, 0)",
+      "type": "transform"
+    },
+    {
+      "id": "expr_488bc78483e98125d5304322",
+      "name": "(dwd_user_metric_di.base_score + dwd_user_metric_di.bonus_score) * dwd_user_metric_di.weight",
+      "type": "transform"
+    },
+    {
+      "id": "expr_68cb1c8d5cca5b5bbaef2abf",
+      "name": "COALESCE(dwd_user_metric_di.pay_amount, 0)",
+      "type": "transform"
+    },
+    {
+      "id": "expr_812be1f3f3d52bd14a76039a",
+      "name": "dwd_user_metric_di.base_score + dwd_user_metric_di.bonus_score",
+      "type": "transform"
+    },
+    {
+      "id": "expr_b939fff64b4305a6be94666d",
+      "name": "COALESCE(dwd_user_metric_di.pay_amount, 0) + COALESCE(dwd_user_metric_di.refund_amount, 0)",
+      "type": "transform"
+    },
+    {
+      "id": "expr_e20560a9236b4cfc39bae28a",
+      "name": "IF(dwd_user_metric_di.active_days >= 7, 'active')",
+      "type": "transform"
+    },
+    {
+      "id": "sql_9066d2306662ed7af1d2b961",
+      "name": "inline_sql",
+      "type": "sql"
+    },
+    {
+      "id": "tbl_85ac6b96dd07668776b1d8d0",
+      "name": "dws_user_value_di",
+      "type": "table"
+    },
+    {
+      "id": "tbl_fe3101537f9d6bca4e1bb3ac",
+      "name": "dwd_user_metric_di",
+      "type": "table"
+    }
+  ],
+  "table_lineage": [
+    [
+      "dwd_user_metric_di",
+      "dws_user_value_di"
+    ]
+  ]
+}

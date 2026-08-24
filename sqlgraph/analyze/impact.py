@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections import Counter, deque
 from dataclasses import dataclass, field
 import math
-import random
+import random  # allow-random: deterministic analysis sampling uses an explicit seed
 from typing import Any, Mapping
 
 from sqlgraph.analyze.config import AnalysisConfig

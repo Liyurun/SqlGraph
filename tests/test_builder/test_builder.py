@@ -78,10 +78,13 @@ def test_expr_dag_different_output_fields_not_merged():
     GROUP BY ad_id
     """
     graph = builder.build_from_sql(sql, name="dedup")
-    expr_nodes = [n for n in graph.nodes if n.node_type.value == "transform"]
-    assert len(expr_nodes) == 2
-    assert {n.output_name for n in expr_nodes} == {"ctr", "ctr2"}
-    assert len({n.fingerprint for n in expr_nodes}) == 1
+    root_nodes = [
+        n for n in graph.nodes
+        if n.node_type.value == "transform" and n.output_name in {"ctr", "ctr2"}
+    ]
+    assert len(root_nodes) == 2
+    assert {n.output_name for n in root_nodes} == {"ctr", "ctr2"}
+    assert len({n.fingerprint for n in root_nodes}) == 1
 
 
 def test_expr_dag_same_logic_same_output_field_merged_across_sql():
@@ -127,15 +130,17 @@ def test_expr_dag_commutative_order_is_not_normalized():
     assert len({n.fingerprint for n in expr_nodes}) == 2
 
 
-def test_composite_expression_single_node():
-    """复合表达式整体作为一个节点，不再拆成子表达式"""
+def test_composite_expression_keeps_root_and_operand_dag():
+    """复合表达式保留稳定根节点，同时显式记录内部操作数关系"""
     builder = GraphBuilder(dialect="spark")
     graph = builder.build_from_sql(
         "INSERT OVERWRITE TABLE t SELECT ROUND(SUM(x) / COUNT(*), 4) AS r FROM e", name="single")
-    expr_nodes = [n for n in graph.nodes if n.node_type.value == "transform"]
-    assert len(expr_nodes) == 1
-    # 不应再产生表达式内部的操作数边
-    assert len(graph.get_edges_by_type(EdgeType.EXPR_OPERAND)) == 0
+    root_nodes = [
+        n for n in graph.nodes
+        if n.node_type.value == "transform" and n.output_name == "r"
+    ]
+    assert len(root_nodes) == 1
+    assert graph.get_edges_by_type(EdgeType.EXPR_OPERAND)
     # 表达式引用的物理列产生计算依赖边（x 一个来源列）
     assert len(graph.get_edges_by_type(EdgeType.COMPUTE_DEPENDENCY)) >= 1
 
@@ -259,9 +264,12 @@ def test_build_lateral_view_output_inside_expression_uses_generator_source():
     }
     assert "src.items" in full_columns
     assert "src.item" not in full_columns
-    transforms = [n for n in graph.nodes if n.node_type.value == "transform"]
-    assert len(transforms) == 1
-    assert transforms[0].expression == "CONCAT(EXPLODE(src.items), '_x')"
+    roots = [
+        n for n in graph.nodes
+        if n.node_type.value == "transform" and n.output_name == "item_x"
+    ]
+    assert len(roots) == 1
+    assert roots[0].expression == "CONCAT(EXPLODE(src.items), '_x')"
 
 
 def test_build_cte_columns_are_connected_across_subqueries():

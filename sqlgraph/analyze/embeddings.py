@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 import hashlib
 from importlib import import_module
 import math
-import random
+import random  # allow-random: deterministic analysis sampling uses an explicit seed
 from typing import Any, Mapping
 
 from sqlgraph.analyze.config import AnalysisConfig
@@ -188,7 +188,10 @@ def cosine_similarity(
     """Return cosine similarity for two normalized-ish vectors."""
     if left is None or right is None or len(left) != len(right):
         return None
-    dot = sum(float(a) * float(b) for a, b in zip(left, right))
+    dot = sum(
+        float(a) * float(b)
+        for a, b in zip(left, right, strict=False)
+    )
     left_norm = math.sqrt(sum(float(item) * float(item) for item in left))
     right_norm = math.sqrt(sum(float(item) * float(item) for item in right))
     if left_norm == 0.0 or right_norm == 0.0:
