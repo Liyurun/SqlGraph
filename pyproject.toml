@@ -31,7 +31,6 @@ classifiers = [
     "Intended Audience :: Information Technology",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -43,7 +42,7 @@ classifiers = [
 sqlgraph = "sqlgraph.cli:main"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.13"
+python = ">=3.10,<3.13"
 sqlglot = ">=25.0.0"
 pandas = ">=2.0.0"
 typer = ">=0.9.0"
@@ -98,7 +97,7 @@ show_missing = true
 
 [tool.ruff]
 line-length = 120
-target-version = "py39"
+target-version = "py310"
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]

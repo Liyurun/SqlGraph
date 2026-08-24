@@ -54,7 +54,7 @@ pip install -e .
 pip install sqlgraph-lineage
 ```
 
-需要 Python 3.9 到 3.12。
+需要 Python 3.10 到 3.12。
 
 ## 快速开始
 
