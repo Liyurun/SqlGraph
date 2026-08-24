@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Liyurun/SqlGraph/schemas/capabilities-v1.schema.json",
+  "title": "SqlGraph Capabilities Ledger v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "capabilities"],
+  "properties": {
+    "schema_version": {"const": "capabilities-v1"},
+    "capabilities": {
+      "type": "array",
+      "minItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status",
+          "description",
+          "modules",
+          "tests",
+          "examples",
+          "limitations"
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "status": {
+            "enum": ["implemented", "experimental", "planned", "concept-only"]
+          },
+          "description": {"type": "string", "minLength": 1},
+          "modules": {"type": "array", "items": {"type": "string"}},
+          "tests": {"type": "array", "items": {"type": "string"}},
+          "examples": {"type": "array", "items": {"type": "string"}},
+          "limitations": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  }
+}

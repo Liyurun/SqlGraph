@@ -130,6 +130,22 @@ sqlgraph playground
 sqlgraph stats ./sql --dialect spark
 ```
 
+### Evidence-bound governance quickstart
+
+Run the minimal book scenario and verify its complete evidence package:
+
+```bash
+sqlgraph governance run examples/minimal/scenario.yaml -o demo_output/minimal
+sqlgraph governance verify demo_output/minimal
+sqlgraph governance replay demo_output/minimal/audit.jsonl
+```
+
+The output contains the deterministic input baseline, graph snapshot, evidence
+bundle, autonomy decision, action result, independent verification report, and a
+hash-chained seven-step audit log. See [CAPABILITIES.yaml](CAPABILITIES.yaml) for
+the status and test evidence of every advertised capability, and
+[docs/limitations.md](docs/limitations.md) for the supported boundary.
+
 ### Lineage Explorer (search + local subgraphs)
 
 For large inputs, avoid one giant HTML file. Serve a searchable explorer instead:
