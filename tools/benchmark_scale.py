@@ -10,10 +10,15 @@ import argparse
 import hashlib
 import json
 import statistics
+import sys
 import time
 import tracemalloc
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from sqlgraph.api import build_graph
 from sqlgraph.input import SqlSource, SqlSourceItem
