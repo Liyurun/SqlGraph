@@ -1,0 +1,32 @@
+task_id: minimal-ctr-001
+intent: caliber_repair
+dialect: duckdb
+sql_file: sql/query.sql
+source_table: src_events
+target_table: dst_metric
+parameters: {}
+udf_manifest: {}
+scheduler_manifest: {}
+action:
+  type: sql_patch
+  adapter: sql_file_patch
+  authorization_scope: single_l3
+  authorization_identity: quickstart-policy
+  blast_radius: 0.1
+  object_risk: 0.1
+  historical_reliability: 0.95
+  roi: 0.8
+  reversibility:
+    state_restorable: true
+    external_effects_controlled: true
+    rollback_verified: true
+    references:
+      - file-content-backup
+  after: |
+    INSERT INTO dst_metric
+    SELECT clicks / impressions AS ctr
+    FROM src_events;
+runtime:
+  checks_passed: true
+  reports_recomputed: true
+  new_alerts: 0

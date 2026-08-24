@@ -1,0 +1,33 @@
+task_id: book-cold-table-001
+intent: cost_governance
+dialect: duckdb
+sql_file: query.sql
+source_table: cold_event_log
+target_table: cold_table_archive
+parameters: {}
+udf_manifest: {}
+scheduler_manifest: {}
+action:
+  type: quarantine_cold_table
+  adapter: sql_file_patch
+  authorization_scope: single_l3
+  authorization_identity: book-demo-policy
+  blast_radius: 0.1
+  object_risk: 0.2
+  historical_reliability: 0.9
+  roi: 0.7
+  reversibility:
+    state_restorable: true
+    external_effects_controlled: true
+    rollback_verified: true
+    references:
+      - file-content-backup
+  after: |
+    INSERT INTO cold_table_archive
+    SELECT event_id, event_date
+    FROM cold_event_log
+    WHERE event_date >= DATE '2026-01-01';
+runtime:
+  checks_passed: true
+  reports_recomputed: true
+  new_alerts: 0

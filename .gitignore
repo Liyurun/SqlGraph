@@ -53,7 +53,7 @@ smoke_result.json
 .benchmarks/
 comparison-screenshots/
 generated_illustrations*/
-book*/
+/book*/
 *.zip
 
 # Large or private local datasets

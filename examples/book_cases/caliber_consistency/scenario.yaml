@@ -1,0 +1,32 @@
+task_id: book-caliber-001
+intent: caliber_repair
+dialect: duckdb
+sql_file: query.sql
+source_table: dwd_ad_events
+target_table: ads_creative_report
+parameters: {}
+udf_manifest: {}
+scheduler_manifest: {}
+action:
+  type: sql_patch
+  adapter: sql_file_patch
+  authorization_scope: single_l3
+  authorization_identity: book-demo-policy
+  blast_radius: 0.2
+  object_risk: 0.3
+  historical_reliability: 0.95
+  roi: 0.9
+  reversibility:
+    state_restorable: true
+    external_effects_controlled: true
+    rollback_verified: true
+    references:
+      - file-content-backup
+  after: |
+    INSERT INTO ads_creative_report
+    SELECT clicks / impressions AS ctr
+    FROM dwd_ad_events;
+runtime:
+  checks_passed: true
+  reports_recomputed: true
+  new_alerts: 0

@@ -49,6 +49,12 @@ app = typer.Typer(
     help="SQL lineage graph construction tool - SQL 血缘图构建工具",
     add_completion=False,
 )
+governance_app = typer.Typer(
+    name="governance",
+    help="Run, verify, and replay evidence-bound governance scenarios.",
+    add_completion=False,
+)
+app.add_typer(governance_app, name="governance")
 
 # 创建 Rich 控制台实例，用于美化终端输出
 console = Console()
@@ -968,6 +974,70 @@ def _print_analysis_summary(snapshot, output: str) -> None:
 
 def _format_metric_names(names) -> str:
     return ", ".join(str(name) for name in names) if names else "-"
+
+
+@governance_app.command("run")
+def governance_run(
+    scenario: str = typer.Argument(..., help="Path to a governance scenario YAML."),
+    output: str = typer.Option(
+        "./governance_output",
+        "-o",
+        "--output",
+        help="Directory for the evidence and audit package.",
+    ),
+):
+    """Run a declarative governance scenario."""
+    from sqlgraph.reasoning.scenario import run_scenario
+
+    result = run_scenario(scenario, output)
+    console.print(
+        f"[green]governance complete[/green] "
+        f"task={result.task_id} outcome={result.outcome}"
+    )
+    console.print(f"audit={result.audit_path}")
+
+
+@governance_app.command("verify")
+def governance_verify(
+    output: str = typer.Argument(..., help="Governance output directory."),
+):
+    """Verify package completeness and audit integrity."""
+    from sqlgraph.reasoning.scenario import verify_scenario_output
+
+    result = verify_scenario_output(output)
+    console.print(
+        f"valid={result['valid']} outcome={result['outcome']} "
+        f"events={result['integrity']['event_count']}"
+    )
+    if not result["valid"]:
+        raise typer.Exit(code=1)
+
+
+@governance_app.command("replay")
+def governance_replay(
+    audit_path: str = typer.Argument(..., help="Path to audit.jsonl."),
+):
+    """Replay the ordered events in a governance audit log."""
+    from sqlgraph.audit import AuditLog
+
+    path = os.path.abspath(audit_path)
+    if not os.path.isfile(path):
+        console.print(f"[red]audit file not found: {path}[/red]")
+        raise typer.Exit(code=2)
+    with open(path, encoding="utf-8") as stream:
+        first = next((json.loads(line) for line in stream if line.strip()), None)
+    if first is None:
+        console.print("[red]audit file is empty[/red]")
+        raise typer.Exit(code=2)
+    replay = AuditLog(path).replay(first["task_id"])
+    if not replay.integrity.valid:
+        console.print("[red]audit integrity check failed[/red]")
+        raise typer.Exit(code=1)
+    for event in replay.events:
+        console.print(
+            f"{event.sequence:02d} {event.step} "
+            f"{event.transition or '-'} {event.event_hash[:12]}"
+        )
 
 
 def main():
