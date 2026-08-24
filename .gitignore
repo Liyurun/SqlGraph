@@ -49,6 +49,12 @@ output_csv/
 sqlgraph_output/
 failed_cases.json
 smoke_result.json
+*.duckdb
+.benchmarks/
+comparison-screenshots/
+generated_illustrations*/
+book*/
+*.zip
 
 # Large or private local datasets
 df.csv
