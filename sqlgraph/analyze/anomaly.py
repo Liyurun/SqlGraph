@@ -372,6 +372,7 @@ def _model_metric(
         raw_scores,
         normalized_scores,
         labels,
+        strict=False,
     ):
         record["model_anomaly_score"] = normalized
         record["model_raw_score"] = round(raw_score, config.float_precision)
