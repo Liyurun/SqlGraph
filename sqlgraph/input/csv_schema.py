@@ -125,6 +125,20 @@ class SchemaRegistry:
                 return True
         return False
 
+    def to_dict(self) -> dict:
+        """Return a stable, serializable schema snapshot."""
+        return {
+            name: [
+                {
+                    "name": column.name,
+                    "data_type": column.data_type,
+                    "description": column.description,
+                }
+                for column in table.columns
+            ]
+            for name, table in sorted(self._tables.items())
+        }
+
     @classmethod
     def from_csv(cls, csv_path: str) -> "SchemaRegistry":
         """从 CSV 文件加载 Schema
