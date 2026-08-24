@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Liyurun/SqlGraph/schemas/audit-event-v1.schema.json",
+  "title": "SqlGraph Audit Event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_id",
+    "baseline_id",
+    "event_type",
+    "step",
+    "payload",
+    "evidence_version",
+    "policy_version",
+    "authorization_identity",
+    "idempotency_key",
+    "transition",
+    "sequence",
+    "timestamp",
+    "previous_hash",
+    "event_hash",
+    "event_id",
+    "schema_version"
+  ],
+  "properties": {
+    "task_id": {"type": "string", "minLength": 1},
+    "baseline_id": {"type": "string", "minLength": 1},
+    "event_type": {"type": "string", "minLength": 1},
+    "step": {"type": "string", "minLength": 1},
+    "payload": {"type": "object"},
+    "evidence_version": {"type": "string"},
+    "policy_version": {"type": "string"},
+    "authorization_identity": {"type": "string"},
+    "idempotency_key": {"type": "string"},
+    "transition": {"type": "string"},
+    "sequence": {"type": "integer", "minimum": 1},
+    "timestamp": {"type": "string", "minLength": 1},
+    "previous_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "event_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "event_id": {"type": "string", "pattern": "^event_[0-9a-f]{32}$"},
+    "schema_version": {"const": "audit-event-v1"}
+  }
+}
