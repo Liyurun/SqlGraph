@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark" style="color-scheme: dark;">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1020">
+<title>__TITLE__ · SqlGraph</title>
+<style>
+__EXPLORER_CSS__
+</style>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0b1020;--panel:#0f172a;--panel-2:#111827;--panel-3:#172033;
+  --text:#e5e7eb;--muted:#94a3b8;--faint:#64748b;
+  --accent:#34d399;--accent-2:#38bdf8;--violet:#c4b5fd;--danger:#fb7185;
+  --shadow:rgba(0,0,0,.32);--line:rgba(148,163,184,.22);--line-strong:rgba(148,163,184,.36);
+  --font-ui:"Avenir Next","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --font-mono:"SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
+  --ink:var(--text);--ink-2:var(--panel-3);--paper:var(--bg);--white:var(--panel);
+  --red:var(--danger);--red-soft:rgba(251,113,133,.12);
+  --green:var(--accent);--green-soft:rgba(52,211,153,.13);
+  --amber:#fbbf24;--amber-soft:rgba(251,191,36,.12);
+  --blue:var(--accent-2);--blue-soft:rgba(56,189,248,.12);--detail:380px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;overflow-x:hidden}
+html{scroll-behavior:smooth}
+body{
+  min-width:320px;
+  font-family:var(--font-ui);
+  background:
+    radial-gradient(circle at 20% -10%,rgba(52,211,153,.16),transparent 30%),
+    radial-gradient(circle at 80% 0%,rgba(56,189,248,.12),transparent 28%),
+    var(--bg);
+  color:var(--text);
+  -webkit-tap-highlight-color:rgba(52,211,153,.18);
+}
+button,input,select{font:inherit;letter-spacing:0}
+button,input,select{touch-action:manipulation}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,main:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px
+}
+.skip-link{
+  position:fixed;left:12px;top:12px;z-index:100;transform:translateY(-140%);
+  background:var(--accent);color:#052e2b;border-radius:999px;padding:8px 12px;
+  font-weight:800;text-decoration:none
+}
+.skip-link:focus{transform:translateY(0)}
+.app{min-height:100vh}
+.app-tabs{
+  display:flex;align-items:center;gap:24px;min-height:52px;
+  padding:10px max(18px,env(safe-area-inset-right)) 10px max(18px,env(safe-area-inset-left));
+  background:rgba(15,23,42,.92);border-bottom:1px solid var(--line);
+  box-shadow:0 10px 30px var(--shadow);backdrop-filter:blur(18px)
+}
+.app-tabs .brand{
+  color:#f8fafc;font-family:var(--font-mono);font-weight:900;letter-spacing:-.02em;white-space:nowrap
+}
+.warehouse-name,.recent{display:none}
+.app-tabs nav{display:flex;min-width:0;gap:6px}
+.app-tabs nav button{
+  min-height:32px;padding:7px 11px;border:0;border-radius:999px;background:transparent;
+  box-shadow:none;color:var(--muted);white-space:nowrap;cursor:pointer;font-weight:700
+}
+.app-tabs nav button:hover{background:rgba(148,163,184,.12);color:#f8fafc;transform:none}
+.app-tabs nav button.active{background:linear-gradient(135deg,var(--accent),#86efac);color:#052e2b;font-weight:800}
+.app-body{min-height:calc(100vh - 52px)}
+.main{min-width:0}
+.topbar{
+  max-width:1224px;margin:0 auto;padding:18px 28px 0;
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+  background:transparent;border:0;color:var(--muted)
+}
+.breadcrumb{font-size:12px}.breadcrumb strong{color:#f8fafc}
+.top-state{display:flex;align-items:center;gap:10px;font-family:var(--font-mono);font-size:11px}
+.status{
+  padding:5px 9px;border:1px solid rgba(52,211,153,.35);border-radius:999px;
+  background:rgba(6,78,59,.35);color:#bbf7d0;font-weight:900
+}
+.content{max-width:1224px;margin:0 auto;padding:24px 28px 40px}
+.task-header{max-width:860px;margin-bottom:18px}
+.eyebrow{color:var(--accent);font-size:12px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.task-header h1{
+  margin-top:4px;color:#f8fafc;font-size:clamp(30px,5vw,46px);
+  line-height:1.02;letter-spacing:-.045em;text-wrap:balance
+}
+.task-header p{margin-top:10px;max-width:700px;color:var(--muted);line-height:1.7;text-wrap:pretty}
+.task-header .primary{margin-top:18px}
+button,.primary{
+  min-height:38px;border:1px solid var(--line-strong);border-radius:10px;padding:0 13px;
+  color:var(--text);background:linear-gradient(180deg,rgba(30,41,59,.96),rgba(15,23,42,.96));
+  box-shadow:0 1px 0 rgba(255,255,255,.06),0 10px 24px rgba(0,0,0,.18);
+  cursor:pointer;font-weight:800
+}
+button:hover,.primary:hover{
+  border-color:rgba(52,211,153,.62);color:#f8fafc;transform:translateY(-1px)
+}
+button:active{transform:translateY(0)}
+.task-tabs{
+  display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 24px;
+  background:transparent;border:0;box-shadow:none
+}
+.task-tabs button{
+  min-height:34px;border-radius:999px;padding:7px 12px;background:transparent;
+  border:0;box-shadow:none;color:var(--muted);text-align:left
+}
+.task-tabs button:hover{background:rgba(148,163,184,.12);color:#f8fafc;transform:none}
+.task-tabs button.active{background:linear-gradient(135deg,var(--accent),#86efac);color:#052e2b;box-shadow:none}
+.task-tabs small{display:none}
+.task-tabs b{font-size:14px}
+.view{display:none}.view.active{display:block}
+.section{margin-top:16px;padding:0 0 16px;border:0}
+.section-head{display:flex;justify-content:space-between;align-items:end;gap:14px;margin-bottom:12px}
+.section-head h2{color:#f8fafc;font-size:18px}
+.section-head p{margin-top:5px;color:var(--muted);font-size:12px;line-height:1.6}
+.text-link{
+  min-height:30px;padding:0;border:0;background:transparent;box-shadow:none;
+  color:var(--accent-2);font-size:12px;font-weight:900
+}
+.text-link:hover{background:transparent;color:#7dd3fc;transform:none}
+.problem,.impact-path,.facts,.rerun-list,.verify-strip,.explorer-shell,.panel,.verification-card,.audit-list,details{
+  overflow:hidden;border:1px solid var(--line);border-radius:16px;
+  background:rgba(15,23,42,.74)
+}
+.problem,.impact-path,.facts,.rerun-list,.verify-strip,.explorer-shell,.panel,.verification-card,.audit-list{
+  box-shadow:0 14px 36px rgba(0,0,0,.18)
+}
+.problem{display:grid;grid-template-columns:1.35fr .65fr}
+.problem-copy{padding:18px;border-right:1px solid rgba(148,163,184,.12)}
+.problem-copy h3{margin:6px 0 8px;color:#f8fafc;font-size:20px}
+.problem-copy p{color:var(--muted);font-size:13px;line-height:1.65;text-wrap:pretty}
+.kpis{display:grid;grid-template-columns:1fr 1fr}
+.kpi{padding:15px;border-right:1px solid rgba(148,163,184,.12);border-bottom:1px solid rgba(148,163,184,.12)}
+.kpi:nth-child(even){border-right:0}.kpi:nth-last-child(-n+2){border-bottom:0}
+.kpi span,.fact span,.decision span{display:block;color:var(--muted);font-size:11px}
+.kpi b,.fact b{display:block;margin-top:6px;color:#f8fafc;font-family:var(--font-mono);font-size:22px;font-variant-numeric:tabular-nums}
+.bad{color:var(--danger)!important}.good,.pass{color:var(--accent)!important}
+.impact-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(230px,.6fr);gap:14px}
+.impact-path{
+  position:relative;min-height:220px;display:flex;align-items:center;justify-content:space-around;padding:42px 22px 20px;
+  background:
+    linear-gradient(rgba(148,163,184,.055) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(148,163,184,.055) 1px,transparent 1px),
+    var(--panel-2);
+  background-size:28px 28px
+}
+.impact-path::before{content:"";position:absolute;left:17%;right:17%;top:51%;height:2px;background:var(--danger)}
+.impact-layer,.layer-label{position:absolute;top:16px;color:var(--accent-2);font-family:var(--font-mono);font-size:10px;font-weight:900}
+.impact-node,.graph-node{
+  position:relative;z-index:2;width:29%;min-height:55px;padding:10px;
+  border:1px solid var(--line-strong);border-radius:10px;background:rgba(17,24,39,.94);
+  color:var(--text);text-align:left;font-size:11px;overflow-wrap:anywhere;
+  box-shadow:0 8px 20px rgba(0,0,0,.18)
+}
+.impact-node.changed,.graph-node.changed{border-color:var(--danger);background:rgba(136,19,55,.28)}
+.impact-node.affected,.graph-node.affected{border-color:#fbbf24;background:rgba(120,53,15,.28)}
+.impact-node small,.graph-node small,.detail p{display:block;margin-top:4px;color:var(--muted);font-size:10px}
+.facts{background:rgba(15,23,42,.74)}
+.fact{padding:13px 15px;border-bottom:1px solid rgba(148,163,184,.12)}
+.fact:last-child{border:0}
+.change-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.code,pre,.sql-full{
+  min-height:118px;padding:13px;border:1px solid var(--line);border-radius:12px;
+  background:#1e1e2e;color:#cdd6f4;font-family:var(--font-mono);font-size:11px;line-height:1.6;
+  white-space:pre-wrap;overflow-wrap:anywhere
+}
+.minus{color:#fda4af}.plus{color:#86efac}
+.rerun-row{
+  display:grid;grid-template-columns:28px minmax(0,1fr) auto auto;gap:10px;align-items:center;
+  padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.12);font-size:12px
+}
+.rerun-row:last-child{border:0}
+.step-number{
+  display:grid;place-items:center;width:22px;height:22px;border-radius:7px;
+  background:rgba(6,78,59,.9);color:#bbf7d0;font-family:var(--font-mono);font-size:11px
+}
+.rerun-row small{display:block;margin-top:3px;color:var(--muted);font-size:11px}
+.number{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.verify-strip{display:grid;grid-template-columns:repeat(3,1fr)}
+.verify-item{padding:15px;border-right:1px solid rgba(148,163,184,.12)}
+.verify-item:last-child{border:0}
+.verify-item h3{color:#f8fafc;font-size:13px}.verify-item p{margin-top:7px;color:var(--muted);font-size:12px;line-height:1.5}
+.explorer-shell{margin-top:16px}
+.explorer-tools{
+  display:flex;justify-content:space-between;gap:12px;padding:12px 14px;
+  border-bottom:1px solid var(--line);background:rgba(11,16,32,.7)
+}
+.tool-left,.tool-right{display:flex;gap:8px;align-items:end}
+input,select{
+  min-height:38px;border:1px solid var(--line-strong);border-radius:10px;
+  background-color:var(--panel-2);color:var(--text);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)
+}
+input{padding:0 12px}input::placeholder{color:var(--faint)}
+select{padding:0 30px 0 12px;-webkit-appearance:none;appearance:none;cursor:pointer}
+input:hover,select:hover{border-color:rgba(148,163,184,.56)}
+.search{width:260px}.filter{max-width:160px}
+.mode{display:flex;overflow:hidden;border:1px solid var(--line-strong);border-radius:10px}
+.mode button{min-height:38px;border:0;border-right:1px solid var(--line);border-radius:0;background:var(--panel-2);box-shadow:none;color:var(--muted)}
+.mode button:last-child{border-right:0}
+.mode button:hover{background:rgba(148,163,184,.12);color:#f8fafc;transform:none}
+.mode button.active{background:linear-gradient(135deg,var(--accent),#86efac);color:#052e2b}
+.result-count{padding:10px 14px;border-bottom:1px solid rgba(148,163,184,.12);color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.explorer-grid{display:grid;grid-template-columns:minmax(0,1fr) var(--detail);min-height:570px}
+.graph-pane{
+  position:relative;overflow:auto;border-right:1px solid var(--line);
+  background:
+    linear-gradient(rgba(148,163,184,.055) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(148,163,184,.055) 1px,transparent 1px),
+    var(--panel-2);
+  background-size:28px 28px
+}
+.graph-inner{position:relative;min-width:1120px;min-height:820px}
+#graph-edges{position:absolute;inset:0;width:1120px;height:820px;pointer-events:none}
+.edge{stroke:#38bdf8;stroke-width:1.8;opacity:.72}.edge.hot{stroke:var(--danger);stroke-width:2.4;opacity:.95}
+.layer-label{width:140px;text-align:center}
+#graph-nodes{position:absolute;inset:0}
+.graph-node{position:absolute;width:150px;min-height:36px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;content-visibility:auto}
+.graph-node:hover,.graph-node:focus-visible{z-index:5}
+.graph-node.selected{outline:2px solid var(--accent-2);outline-offset:2px;z-index:6}
+.mobile-assets{display:none}
+.empty-state{display:none;min-height:400px;align-items:center;justify-content:center;text-align:center;padding:30px;color:var(--muted)}
+.empty-state.visible{display:flex}.empty-state h3{margin-bottom:6px;color:#f8fafc}.empty-state p{margin-bottom:12px;font-size:12px}
+.detail{overflow:auto;background:rgba(15,23,42,.92);border-left:1px solid var(--line)}
+.detail-head,.detail-section{padding:16px 18px;border-bottom:1px solid var(--line)}
+.detail h2{margin:4px 0 3px;color:#f8fafc;font-size:17px;overflow-wrap:anywhere}
+.detail h3{margin-bottom:9px;color:var(--accent-2);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.kv{display:grid;grid-template-columns:1fr auto;gap:8px 10px;font-size:12px}
+.kv b{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.pill-list{display:flex;flex-wrap:wrap;gap:6px}
+.pill-list button,.pill{
+  min-height:30px;padding:6px 8px;border:1px solid rgba(148,163,184,.18);border-radius:8px;
+  background:rgba(17,24,39,.62);box-shadow:none;color:#dbeafe;font-family:var(--font-mono);font-size:11px
+}
+.pill-list button:hover{border-color:var(--accent);color:#f8fafc;transform:none}
+.execution-layout{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{padding:17px}.panel h2{margin-bottom:13px;color:#f8fafc;font-size:16px}
+.decision{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.decision div{padding:11px;border:1px solid var(--line);border-radius:10px;background:rgba(17,24,39,.72)}
+.decision b{display:block;margin-top:5px;color:#f8fafc;font-size:14px}
+.verification-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.verification-card{min-width:0;padding:16px;border-top:4px solid var(--accent)}
+.verification-card h2{margin-bottom:12px;color:#f8fafc;font-size:15px}
+.verification-card p{color:var(--muted);font-size:12px;line-height:1.55;text-wrap:pretty}
+.verification-source{display:block;margin-top:12px;padding-top:9px;border-top:1px solid var(--line);color:var(--muted);font-family:var(--font-mono);font-size:10px;overflow-wrap:anywhere}
+.query-table{width:100%;border-collapse:collapse;font-size:12px}
+.query-table th,.query-table td{padding:10px 8px;border-bottom:1px solid rgba(148,163,184,.12);text-align:right;font-variant-numeric:tabular-nums}
+.query-table th:first-child,.query-table td:first-child{text-align:left}.query-table th{color:var(--muted);background:rgba(15,23,42,.72)}
+.audit-list{background:rgba(15,23,42,.74)}
+.audit-row{display:grid;grid-template-columns:38px 120px 1fr auto;gap:12px;align-items:start;padding:14px;border-bottom:1px solid rgba(148,163,184,.12)}
+.audit-row:last-child{border:0}.audit-row strong{color:#f8fafc}.audit-row p{margin-top:2px;color:var(--muted);font-size:12px;line-height:1.5}.audit-row code{color:var(--faint);font-size:10px}
+summary{padding:13px;color:#f8fafc;cursor:pointer;font-size:12px;font-weight:800}
+details pre{margin:0;border-top:1px solid var(--line);border-radius:0;border-inline:0;border-bottom:0}
+@media(prefers-reduced-motion:no-preference){.app-tabs nav button,button,.graph-node,.impact-node{transition:background-color .16s ease,border-color .16s ease,color .16s ease,transform .16s ease}}
+@media(max-width:900px){
+  .app-tabs{align-items:flex-start;flex-direction:column;gap:10px}
+  .app-tabs nav{flex-wrap:wrap}
+  .app-body{min-height:calc(100vh - 86px)}
+  .topbar{padding:16px 18px 0}.content{padding:20px 18px 32px}
+  .explorer-grid{grid-template-columns:1fr}.graph-pane{min-height:540px;border-right:0;border-bottom:1px solid var(--line)}
+  .execution-layout,.verification-grid,.problem{grid-template-columns:1fr}
+  .problem-copy{border-right:0;border-bottom:1px solid rgba(148,163,184,.12)}
+}
+@media(max-width:600px){
+  .app-tabs{padding:12px 14px}.app-tabs nav{gap:4px}.app-tabs nav button{min-height:36px;padding:0 9px}
+  .topbar{align-items:flex-start;flex-direction:column}.content{padding:16px 14px 30px}
+  .task-header h1{font-size:32px}.task-tabs{flex-wrap:wrap;gap:5px;margin-bottom:20px}.task-tabs button{min-height:34px;padding:7px 10px}
+  .section-head{align-items:flex-start;flex-direction:column}.impact-grid,.change-grid{grid-template-columns:1fr}
+  .impact-path{min-height:280px;flex-direction:column;gap:18px;padding:38px 14px 14px}
+  .impact-path::before{left:50%;right:auto;top:20%;bottom:20%;width:2px;height:auto}
+  .impact-node{width:100%;min-height:48px}
+  .explorer-tools{align-items:stretch;flex-direction:column}.tool-left,.tool-right{width:100%;align-items:stretch;flex-direction:column}
+  .search,.filter{width:100%;max-width:none;min-height:42px}
+  .mode button{min-height:42px}
+  .graph-pane{display:none}.mobile-assets{display:block;max-height:none;padding:12px;background:var(--panel-2)}
+  .mobile-layer{margin-bottom:14px}.mobile-layer h3{margin-bottom:8px;color:var(--muted);font-family:var(--font-mono);font-size:11px}
+  .mobile-layer button{display:flex;justify-content:space-between;width:100%;min-height:48px;margin-bottom:7px;padding:10px;border-color:var(--line);border-radius:10px;background:rgba(15,23,42,.86);color:var(--text);box-shadow:none;font-size:12px;text-align:left}
+  .mobile-layer button.changed{border-color:var(--danger);background:rgba(136,19,55,.28)}
+  .audit-row{grid-template-columns:32px 74px 1fr}.audit-row code{display:none}
+}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main-content">跳到主要内容</a>
+<div class="app">
+  <header class="app-tabs product-nav">
+    <div class="brand">SqlGraph Explorer</div><div class="warehouse-name">视频商业化数仓</div>
+    <nav class="product-links" aria-label="产品导航">
+      <button class="active" data-product-view="overview" onclick="switchView('overview')">治理任务</button>
+      <button data-product-view="assets" onclick="switchView('lineage','tables')">数据资产</button>
+      <button data-product-view="lineage" onclick="switchView('lineage','impact')">血缘分析</button>
+      <button data-product-view="execution" onclick="switchView('execution')">运行记录</button>
+      <button data-product-view="verification" onclick="switchView('verification')">业务契约</button>
+    </nav>
+    <section class="recent"><h2>当前任务</h2><button onclick="switchView('overview')">CTR 口径修复<small>已闭环</small></button></section>
+  </header>
+  <main class="app-body main" id="main-content">
+    <header class="topbar"><div class="breadcrumb">治理任务 / <strong>VCW-CTR-001</strong></div><div class="top-state"><span id="profile"></span><span class="status" id="overall-state"></span></div></header>
+    <div class="content">
+      <header class="task-header"><div><div class="eyebrow">当前治理任务</div><h1 id="task-title"></h1><p id="task-meta"></p></div><button class="primary" onclick="switchView('lineage','impact')">查看完整证据</button></header>
+      <nav class="task-tabs" aria-label="治理任务阶段">
+        <button data-view="overview" onclick="switchView('overview')"><small>01</small><b>任务概览</b></button>
+        <button data-view="lineage" onclick="switchView('lineage')"><small>02</small><b>血缘分析</b></button>
+        <button data-view="execution" onclick="switchView('execution')"><small>03</small><b>执行计划</b></button>
+        <button data-view="verification" onclick="switchView('verification')"><small>04</small><b>验证结果</b></button>
+        <button data-view="audit" onclick="switchView('audit')"><small>05</small><b>审计记录</b></button>
+      </nav>
+
+      <section class="view" id="view-overview" data-view="overview">
+        <div class="section"><div class="section-head"><div><h2>发生了什么</h2><p>业务结论先于技术细节</p></div><button class="text-link" onclick="switchView('verification')">查看业务契约</button></div>
+          <div class="problem"><div class="problem-copy"><div class="eyebrow">口径不一致</div><h3>上游输出百分数，下游按比率解释</h3><p>素材 CTR 原值 <strong id="overview-before-max"></strong> 被当作比率使用，导致低点击率素材被错误评级。治理动作统一为 <strong>[0,1] 比率</strong>，并只重跑受影响任务。</p></div>
+            <div class="kpis"><div class="kpi"><span>修复前越界</span><b class="bad" id="overview-before-invalid"></b></div><div class="kpi"><span>影响任务</span><b id="overview-rerun"></b></div><div class="kpi"><span>修复后越界</span><b class="good" id="overview-after-invalid"></b></div><div class="kpi"><span>自治等级</span><b id="overview-level"></b></div></div></div>
+        </div>
+        <div class="section"><div class="section-head"><div><h2>影响路径</h2><p>只展示本次决策所需证据</p></div><button class="text-link" onclick="switchView('lineage','tables')">进入 94 表血缘分析</button></div>
+          <div class="impact-grid"><div class="impact-path"><span class="impact-layer" style="left:10%">DWD</span><span class="impact-layer" style="left:46%">DWS</span><span class="impact-layer" style="left:83%">ADS</span>
+            <button class="impact-node" onclick="openTable('dwd_ad_attribution_wide')">dwd_ad_attribution_wide<small>归因宽表</small></button><button class="impact-node changed" onclick="openTable('dws_creative_performance_daily')">dws_creative_performance_daily<small>CTR 定义已修改</small></button><button class="impact-node affected" onclick="openTable('ads_creative_report')">ads_creative_report<small>素材评级受影响</small></button></div>
+            <div class="facts"><div class="fact"><span>结构影响</span><b id="overview-impact"></b></div><div class="fact"><span>增量重跑</span><b id="overview-rerun-ratio"></b></div><div class="fact"><span>证据基线</span><b id="overview-evidence"></b></div><div class="fact"><span>可逆性</span><b class="good">可恢复</b></div></div></div>
+        </div>
+        <div class="section"><div class="section-head"><div><h2>执行与验证</h2><p>修改内容、执行任务与验证结论</p></div><button class="text-link" onclick="switchView('execution')">查看执行计划</button></div>
+          <div class="change-grid"><div class="code"><span class="minus" id="overview-before-expr"></span>
+<span class="plus" id="overview-after-expr"></span>
+
+单位：percentage → ratio
+范围：不确定 → [0,1]</div><div class="rerun-list" id="overview-reruns"></div></div>
+          <div class="verify-strip" id="overview-verify"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-lineage" data-view="lineage">
+        <div class="section-head" style="margin-top:20px"><div><h2>血缘分析</h2><p><span id="warehouse-scale"></span>，按任务上下文逐步缩小范围</p></div></div>
+        <div class="explorer-shell">
+          <div class="explorer-tools"><div class="tool-left"><input type="search" id="asset-search" name="asset-search" autocomplete="off" placeholder="搜索表或任务…" aria-label="搜索表或任务" oninput="setQuery(this.value)">
+            <div class="mode"><button id="mode-impact" onclick="setGraphMode('impact')">影响路径</button><button id="mode-tables" onclick="setGraphMode('tables')">数据表</button><button id="mode-tasks" onclick="setGraphMode('tasks')">任务 DAG</button></div></div>
+            <div class="tool-right"><select class="filter" id="layer-filter" aria-label="按数仓层级筛选" onchange="setLayer(this.value)"></select><select class="filter" id="domain-filter" aria-label="按业务主题筛选" onchange="setDomain(this.value)"></select></div></div>
+          <div class="result-count" id="result-count"></div>
+          <div class="explorer-grid">
+            <div class="graph-pane" aria-label="数仓血缘图"><div class="graph-inner"><svg id="graph-edges" viewBox="0 0 1120 820" aria-hidden="true"></svg><div id="graph-nodes"></div></div></div>
+            <div class="mobile-assets" id="mobile-assets"></div>
+            <div class="empty-state" id="empty-state"><div><h3>没有匹配结果</h3><p>调整关键词、层级或业务主题。</p><button class="primary" onclick="clearFilters()">清除筛选</button></div></div>
+            <aside class="detail" aria-live="polite">
+              <div id="table-detail"><div class="detail-head"><div class="eyebrow">数据表</div><h2 id="table-name"></h2><p id="table-meta"></p></div><div class="detail-section"><h3>表状态</h3><div class="kv"><span>真实行数</span><b id="table-rows"></b><span>SQL 文件</span><b id="table-file"></b><span>执行耗时</span><b id="table-time"></b></div></div><div class="detail-section"><h3>上游</h3><div class="pill-list" id="table-upstream"></div></div><div class="detail-section"><h3>下游</h3><div class="pill-list" id="table-downstream"></div></div><div class="detail-section" id="table-change"><h3>该表的治理变更</h3><div class="code"><span class="minus" id="table-before-expr"></span>
+<span class="plus" id="table-after-expr"></span></div></div></div>
+              <div id="task-detail" hidden><div class="detail-head"><div class="eyebrow">执行任务</div><h2 id="task-name"></h2><p id="task-meta-detail"></p></div><div class="detail-section"><h3>运行状态</h3><div class="kv"><span>任务序号</span><b id="task-order"></b><span>产出行数</span><b id="task-rows"></b><span>执行耗时</span><b id="task-time"></b></div></div><div class="detail-section"><h3>依赖表/任务</h3><div class="pill-list" id="task-deps"></div></div></div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-execution" data-view="execution">
+        <div class="section"><div class="section-head"><div><h2>执行计划</h2><p>先过安全闸门，再执行受影响 DAG</p></div></div><div class="execution-layout">
+          <div class="panel"><h2>SQL 修改</h2><div class="code"><span class="minus" id="execution-before"></span>
+<span class="plus" id="execution-after"></span></div></div>
+          <div class="panel"><h2>自治决策</h2><div class="decision"><div><span>动作等级</span><b id="decision-level"></b></div><div><span>人工审批</span><b id="decision-review"></b></div><div><span>可逆性否决</span><b id="decision-veto"></b></div><div><span>授权范围</span><b>单次 L3</b></div></div></div>
+          <div class="panel"><h2>增量执行顺序</h2><div class="rerun-list" id="execution-reruns"></div></div>
+          <div class="panel"><h2>恢复资产</h2><div class="kv"><span>SQL 快照</span><b>before/sql/</b><span>数据库快照</span><b>before.duckdb</b><span>当前数据库</span><b>after.duckdb</b></div></div>
+        </div></div>
+      </section>
+
+      <section class="view" id="view-verification" data-view="verification">
+        <div class="section"><div class="section-head"><div><h2>验证结果</h2><p>三层独立报告，运行态来自 DuckDB 实际查询</p></div></div><div class="verification-grid" id="verification-grid"></div></div>
+        <div class="section"><div class="section-head"><div><h2>DuckDB 真实查询对比</h2><p id="query-source"></p></div></div><table class="query-table"><thead><tr><th>指标</th><th>修复前</th><th>修复后</th><th>单位</th></tr></thead><tbody id="query-comparison"></tbody></table></div>
+        <div class="section"><div class="section-head"><div><h2>残余风险</h2><p>验证成功不等于零风险</p></div></div><div class="pill-list" id="residual-risks"></div></div>
+      </section>
+
+      <section class="view" id="view-audit" data-view="audit">
+        <div class="section"><div class="section-head"><div><h2>审计摘要</h2><p>七步共享同一证据版本，原始记录默认折叠</p></div></div><div class="audit-list" id="audit-list"></div><details><summary tabindex="0">查看原始审计记录</summary><pre id="raw-audit"></pre></details></div>
+      </section>
+    </div>
+  </main>
+</div>
+<script id="warehouse-data" type="application/json">__PAYLOAD__</script>
+<script>
+const DATA=JSON.parse(document.getElementById('warehouse-data').textContent);
+const LAYERS=['ODS','STG','DIM','DWD','DWS','ADS'];
+const DOMAIN_LABELS={content:'内容',user:'用户',traffic:'流量',recommendation:'推荐',ad_inventory:'广告资源',ad_delivery:'竞价投放',attribution:'转化归因',billing:'预算计费',experiment:'实验策略',risk:'质量风控'};
+const VIEW_LABELS={overview:'任务概览',lineage:'血缘分析',execution:'执行计划',verification:'验证结果',audit:'审计记录'};
+let state={view:'overview',mode:'impact',layer:'ALL',domain:'ALL',q:'',asset:DATA.scenario.target_table,selectedTable:DATA.scenario.target_table,selectedTask:DATA.scenario.target_table};
+const $=id=>document.getElementById(id);const fmt=n=>new Intl.NumberFormat('zh-CN').format(n||0);
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tableMap=Object.fromEntries(DATA.warehouse.tables.map(t=>[t.name,t]));
+const taskMap=Object.fromEntries(DATA.warehouse.tasks.map(t=>[t.target,t]));
+const affected=new Set([DATA.scenario.target_table,...DATA.impact.reachable]);
+
+function readUrl(){const p=new URLSearchParams(location.hash.slice(1));for(const key of ['view','mode','layer','domain','q','asset'])if(p.has(key))state[key]=p.get(key)}
+function syncUrl(){const p=new URLSearchParams({view:state.view,mode:state.mode,layer:state.layer,domain:state.domain,q:state.q,asset:state.asset});history.replaceState(null,'',`#${p.toString()}`)}
+function switchView(view,mode){state.view=view;if(mode)state.mode=mode;document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.dataset.view===view));document.querySelectorAll('.task-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));const productView=view==='lineage'&&state.mode==='tables'?'assets':view;document.querySelectorAll('.product-links button').forEach(b=>b.classList.toggle('active',b.dataset.productView===productView));if(view==='lineage')renderExplorer();syncUrl()}
+function openTable(name){state.selectedTable=name;switchView('lineage',affected.has(name)?'impact':'tables');selectTable(name)}
+function hydrate(){
+  $('profile').textContent=`${DATA.catalog.profile} · ${DATA.scenario.task_id}`;$('overall-state').textContent=DATA.audit.outcome.toUpperCase();$('task-title').textContent=DATA.scenario.title;$('task-meta').textContent=`${DATA.scenario.target_table}.ctr · 商业化口径巡检`;
+  $('overview-before-max').textContent=Number(DATA.runtime.before.max_ctr).toFixed(4);$('overview-before-invalid').textContent=DATA.runtime.before.invalid_ctr_rows;$('overview-after-invalid').textContent=DATA.runtime.after.invalid_ctr_rows;$('overview-rerun').textContent=DATA.impact.executable_tasks.length;$('overview-level').textContent=DATA.decision.level;$('overview-impact').textContent=`${DATA.impact.reachable.length} 张下游表`;$('overview-rerun-ratio').textContent=`${DATA.rerun.success_count} / ${DATA.catalog.task_count} 个任务`;$('overview-evidence').textContent=DATA.evidence.version_id;
+  for(const prefix of ['overview','execution','table']){$(`${prefix}-before${prefix==='table'?'-expr':''}`)?.removeAttribute('unused')}
+  $('overview-before-expr').textContent=`- ${DATA.change.before_expression}`;$('overview-after-expr').textContent=`+ ${DATA.change.after_expression}`;$('execution-before').textContent=`- ${DATA.change.before_expression}`;$('execution-after').textContent=`+ ${DATA.change.after_expression}`;$('table-before-expr').textContent=`- ${DATA.change.before_expression}`;$('table-after-expr').textContent=`+ ${DATA.change.after_expression}`;
+  renderReruns('overview-reruns');renderReruns('execution-reruns');renderOverviewVerify();
+  $('decision-level').textContent=DATA.decision.level;$('decision-review').textContent=DATA.decision.requires_human_review?'需要':'不需要';$('decision-veto').textContent=DATA.decision.reversibility_veto?'触发':'未触发';
+  renderVerification();renderAudit();
+  $('warehouse-scale').textContent=`${DATA.catalog.table_count} 张表 · ${DATA.catalog.task_count} 个任务 · ${fmt(DATA.warehouse.tables.reduce((s,t)=>s+t.row_count,0))} 行`;
+  $('layer-filter').innerHTML='<option value="ALL">全部层级</option>'+LAYERS.map(x=>`<option value="${x}">${x}</option>`).join('');
+  $('domain-filter').innerHTML='<option value="ALL">全部主题</option>'+Object.entries(DOMAIN_LABELS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+}
+function renderReruns(id){$(id).innerHTML=DATA.rerun.tasks.map((name,i)=>{const t=taskMap[name];return`<div class="rerun-row"><span class="step-number">${i+1}</span><div><b>${esc(name)}</b><small>${esc(t?.description||'受影响任务')}</small></div><span class="number">${t?.elapsed_ms==null?'—':t.elapsed_ms+' ms'}</span><b class="good">通过</b></div>`}).join('')}
+function renderOverviewVerify(){const labels={structure:'结构验证',contract:'契约验证',runtime:'运行态验证'};$('overview-verify').innerHTML=['structure','contract','runtime'].map(k=>{const item=DATA.verify[k];return`<div class="verify-item"><h3>${labels[k]} · <span class="${item.status==='pass'?'pass':'bad'}">${item.status==='pass'?'通过':'失败'}</span></h3><p>${esc(item.note)}</p></div>`}).join('')}
+function setGraphMode(mode){state.mode=mode;renderExplorer();syncUrl()}function setLayer(value){state.layer=value;renderExplorer();syncUrl()}function setDomain(value){state.domain=value;renderExplorer();syncUrl()}function setQuery(value){state.q=value.trim().toLowerCase();renderExplorer();syncUrl()}
+function clearFilters(){state.layer='ALL';state.domain='ALL';state.q='';$('layer-filter').value='ALL';$('domain-filter').value='ALL';$('asset-search').value='';renderExplorer();syncUrl()}
+function filteredTables(){return DATA.warehouse.tables.filter(t=>(state.mode!=='impact'||affected.has(t.name))&&(state.layer==='ALL'||t.layer===state.layer)&&(state.domain==='ALL'||t.domain===state.domain)&&(!state.q||t.name.toLowerCase().includes(state.q)))}
+function filteredTasks(){return DATA.warehouse.tasks.filter(t=>(state.layer==='ALL'||t.layer===state.layer)&&(state.domain==='ALL'||t.domain===state.domain)&&(!state.q||(t.target+' '+t.description).toLowerCase().includes(state.q)))}
+function layout(items,keyLayer,keyName){const groups={};items.forEach(x=>(groups[x[keyLayer]]??=[]).push(x));const active=LAYERS.filter(x=>groups[x]?.length),pos={};active.forEach((l,li)=>{const list=groups[l],x=25+li*(1050/Math.max(active.length-1,1)),gap=Math.min(40,720/Math.max(list.length,1)),total=gap*(list.length-1);list.forEach((item,i)=>pos[item[keyName]]={x,y:70+(720-total)/2+i*gap})});return{groups,active,pos}}
+function renderExplorer(){
+  ['impact','tables','tasks'].forEach(x=>$(`mode-${x}`).classList.toggle('active',state.mode===x));
+  $('layer-filter').value=state.layer;$('domain-filter').value=state.domain;$('asset-search').value=state.q;
+  if(state.mode==='tasks')renderTaskGraph(filteredTasks());else renderTableGraph(filteredTables());
+}
+function renderTableGraph(tables){
+  $('table-detail').hidden=false;$('task-detail').hidden=true;$('result-count').textContent=`数据表 · ${tables.length} 个结果`;
+  renderGraphCommon(tables,'layer','name',t=>t.name,t=>t.upstream.map(dep=>({source:dep,target:t.name})),selectTable);
+  renderMobile(tables,t=>t.name,t=>`${fmt(t.row_count)} 行`,selectTable);
+  toggleEmpty(tables.length);if(tables.length)selectTable(tables.some(t=>t.name===state.asset)?state.asset:tables[0].name,false)
+}
+function renderTaskGraph(tasks){
+  $('table-detail').hidden=true;$('task-detail').hidden=false;$('result-count').textContent=`执行任务 · ${tasks.length} 个结果`;
+  renderGraphCommon(tasks,'layer','target',t=>`#${String(t.order).padStart(3,'0')} ${t.target}`,t=>t.dependencies.filter(d=>taskMap[d]).map(dep=>({source:dep,target:t.target})),selectTask);
+  renderMobile(tasks,t=>t.target,t=>`#${String(t.order).padStart(3,'0')} · ${fmt(t.row_count)} 行`,selectTask);
+  toggleEmpty(tasks.length);if(tasks.length)selectTask(tasks.some(t=>t.target===state.asset)?state.asset:tasks[0].target,false)
+}
+function renderGraphCommon(items,layerKey,nameKey,labelFn,edgeFn,selectFn){
+  const{active,pos}=layout(items,layerKey,nameKey),names=new Set(items.map(x=>x[nameKey])),edges=items.flatMap(edgeFn).filter(e=>names.has(e.source)&&names.has(e.target));
+  $('graph-edges').innerHTML=edges.map(e=>`<line class="edge ${affected.has(e.source)&&affected.has(e.target)?'hot':''}" x1="${pos[e.source].x+140}" y1="${pos[e.source].y+17}" x2="${pos[e.target].x}" y2="${pos[e.target].y+17}"/>`).join('');
+  $('graph-nodes').replaceChildren();active.forEach(l=>{const first=items.find(x=>x[layerKey]===l);const label=document.createElement('div');label.className='layer-label';label.style.left=`${pos[first[nameKey]].x}px`;label.textContent=l;$('graph-nodes').appendChild(label)});
+  items.forEach(item=>{const name=item[nameKey],p=pos[name],nodeButton=document.createElement('button');nodeButton.className=`graph-node ${name===DATA.scenario.target_table?'changed':affected.has(name)?'affected':''}`;nodeButton.style.left=`${p.x}px`;nodeButton.style.top=`${p.y}px`;nodeButton.dataset.nodeId=name;nodeButton.title=labelFn(item);nodeButton.innerHTML=`<span>${esc(labelFn(item))}</span><small>${esc(item.domain)}</small>`;nodeButton.addEventListener('click',()=>selectFn(name));$('graph-nodes').appendChild(nodeButton)})
+}
+function renderMobile(items,nameFn,metaFn,selectFn){const groups={};items.forEach(x=>(groups[x.layer]??=[]).push(x));$('mobile-assets').innerHTML=LAYERS.filter(l=>groups[l]?.length).map(l=>`<section class="mobile-layer"><h3>${l} · ${groups[l].length}</h3>${groups[l].map(x=>`<button class="${nameFn(x)===DATA.scenario.target_table?'changed':''}" data-node-id="${esc(nameFn(x))}"><span>${esc(nameFn(x))}</span><b>${esc(metaFn(x))}</b></button>`).join('')}</section>`).join('');Array.from($('mobile-assets').querySelectorAll('button')).forEach(b=>b.addEventListener('click',()=>selectFn(b.dataset.nodeId)))}
+function toggleEmpty(count){$('empty-state').classList.toggle('visible',count===0);$('graph-edges').style.display=count?'block':'none';$('graph-nodes').style.display=count?'block':'none';$('mobile-assets').style.display=count?'':'none'}
+function nodeButtonsSelected(name){document.querySelectorAll('[data-node-id]').forEach(n=>n.classList.toggle('selected',n.dataset.nodeId===name))}
+function selectTable(name,scroll=true){const t=tableMap[name];if(!t)return;state.selectedTable=name;state.asset=name;nodeButtonsSelected(name);$('table-name').textContent=name;$('table-meta').textContent=`${t.layer} · ${DOMAIN_LABELS[t.domain]}`;$('table-rows').textContent=fmt(t.row_count);$('table-file').textContent=t.sql_file||'DuckDB 种子表';$('table-time').textContent=taskMap[name]?.elapsed_ms==null?'—':`${taskMap[name].elapsed_ms} ms`;renderLinks('table-upstream',t.upstream);renderLinks('table-downstream',t.downstream);$('table-change').hidden=name!==DATA.scenario.target_table;syncUrl();if(scroll&&innerWidth<601)document.querySelector('.detail').scrollIntoView({behavior:'smooth'})}
+function selectTask(name,scroll=true){const t=taskMap[name];if(!t)return;state.selectedTask=name;state.asset=name;nodeButtonsSelected(name);$('task-name').textContent=t.target;$('task-meta-detail').textContent=`${t.layer} · ${DOMAIN_LABELS[t.domain]} · ${t.description}`;$('task-order').textContent=`#${String(t.order).padStart(3,'0')}`;$('task-rows').textContent=fmt(t.row_count);$('task-time').textContent=t.elapsed_ms==null?'—':`${t.elapsed_ms} ms`;$('task-deps').innerHTML=t.dependencies.map(x=>`<span class="pill">${esc(x)}</span>`).join('');syncUrl();if(scroll&&innerWidth<601)document.querySelector('.detail').scrollIntoView({behavior:'smooth'})}
+function renderLinks(id,names){$(id).innerHTML=(names.length?names:['无']).map(name=>name==='无'?'<span class="pill">无</span>':`<button onclick="openTable('${esc(name)}')">${esc(name)}</button>`).join('')}
+function renderVerification(){const labels={structure:'结构验证',contract:'契约验证',runtime:'运行态验证'},summaries={structure:`确认 ${DATA.scenario.target_table} → ${DATA.scenario.downstream_table} 的表级路径和字段证据均可还原。`,contract:`CTR 单位为 ratio，值域 [0,1]；评级阈值为 ${DATA.runtime.thresholds.join(' / ')}。`,runtime:`DuckDB 实际查询：越界行 ${DATA.runtime.before.invalid_ctr_rows} → ${DATA.runtime.after.invalid_ctr_rows}，评级不一致 ${DATA.runtime.after.grade_mismatch_rows}。`},sources={structure:DATA.evidence.version_id,contract:`contract ${DATA.contract.version}`,runtime:`duckdb_query · ${DATA.catalog.profile}`};$('verification-grid').innerHTML=['structure','contract','runtime'].map(k=>{const item=DATA.verify[k];return`<article class="verification-card"><h2>${labels[k]} · <span class="${item.status==='pass'?'good':'bad'}">${item.status==='pass'?'通过':'失败'}</span></h2><p>${esc(summaries[k])}</p><span class="verification-source">${esc(sources[k])}</span></article>`}).join('');$('query-source').textContent=`来源：DuckDB · ${DATA.catalog.profile} profile · ads_creative_report`;$('query-comparison').innerHTML=[['CTR 越界行',DATA.runtime.before.invalid_ctr_rows,DATA.runtime.after.invalid_ctr_rows,'行'],['最大 CTR',Number(DATA.runtime.before.max_ctr).toFixed(6)+'（百分数误用）',Number(DATA.runtime.after.max_ctr).toFixed(6)+'（比率）','数值'],['评级不一致',DATA.runtime.before.grade_mismatch_rows,DATA.runtime.after.grade_mismatch_rows,'行'],['结果行数',DATA.runtime.before.row_count,DATA.runtime.after.row_count,'行']].map(r=>`<tr><td>${r[0]}</td><td class="bad">${typeof r[1]==='number'?fmt(r[1]):esc(r[1])}</td><td class="good">${typeof r[2]==='number'?fmt(r[2]):esc(r[2])}</td><td>${r[3]}</td></tr>`).join('');const risks={evidence_boundary:'证据边界',parse_omission:'解析遗漏',common_mode_error:'共同模式错误',monitoring_delay:'监控延迟',rollback_failure:'回滚失败'};$('residual-risks').innerHTML=DATA.residual.residual_risk.map(x=>`<span class="pill">${esc(risks[x]||x)}</span>`).join('')}
+function auditSummary(step){const map={observe:`发现 ${DATA.runtime.before.invalid_ctr_rows} 行 CTR 超出 [0,1]。`,explain:`确认 ${DATA.scenario.target_table} 到 ${DATA.scenario.downstream_table} 的结构路径。`,propose:'删除百分数放大因子，统一使用比率。',authorize:`动作可逆且证据充分，授权 ${DATA.decision.level}。`,execute:`真实重跑 ${DATA.rerun.success_count} 个受影响任务。`,verify:`结构、契约与 DuckDB 运行态结论：${DATA.verify.closed_loop_status}。`,learn:'记录验证信号，不自动扩大授权范围。'};return map[step.step]||step.step}
+function renderAudit(){const labels={observe:'观察',explain:'解释',propose:'提案',authorize:'授权',execute:'执行',verify:'验证',learn:'学习'};$('audit-list').innerHTML=DATA.audit.steps.slice(0,7).map((s,i)=>`<article class="audit-row"><span class="step-number">${i+1}</span><strong>${labels[s.step]||s.step}</strong><p>${esc(auditSummary(s))}</p><code>${esc(s.transition||s.evidence_version)}</code></article>`).join('');$('raw-audit').textContent=JSON.stringify(DATA.audit,null,2)}
+window.addEventListener('hashchange',()=>{readUrl();switchView(state.view,state.mode)});
+readUrl();hydrate();switchView(state.view,state.mode);
+</script>
+</body>
+</html>

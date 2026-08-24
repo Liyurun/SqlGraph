@@ -1,0 +1,2081 @@
+{
+  "base_table_count": 32,
+  "description": "视频平台流量与广告商业化完整数仓",
+  "layer_counts": {
+    "ADS": 10,
+    "DIM": 14,
+    "DWD": 18,
+    "DWS": 16,
+    "ODS": 18,
+    "STG": 18
+  },
+  "name": "video_commercial_warehouse",
+  "table_count": 94,
+  "tables": [
+    {
+      "columns": [
+        [
+          "request_id",
+          "BIGINT"
+        ],
+        [
+          "session_id",
+          "BIGINT"
+        ],
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "device_id",
+          "BIGINT"
+        ],
+        [
+          "geo_id",
+          "BIGINT"
+        ],
+        [
+          "channel_id",
+          "BIGINT"
+        ],
+        [
+          "experiment_id",
+          "BIGINT"
+        ],
+        [
+          "request_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "recommendation",
+      "layer": "ODS",
+      "name": "ods_recommend_request"
+    },
+    {
+      "columns": [
+        [
+          "exposure_id",
+          "BIGINT"
+        ],
+        [
+          "request_id",
+          "BIGINT"
+        ],
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "video_id",
+          "BIGINT"
+        ],
+        [
+          "position",
+          "INTEGER"
+        ],
+        [
+          "exposure_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "traffic",
+      "layer": "ODS",
+      "name": "ods_video_exposure"
+    },
+    {
+      "columns": [
+        [
+          "play_id",
+          "BIGINT"
+        ],
+        [
+          "exposure_id",
+          "BIGINT"
+        ],
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "video_id",
+          "BIGINT"
+        ],
+        [
+          "play_duration_sec",
+          "DOUBLE"
+        ],
+        [
+          "completion_rate",
+          "DOUBLE"
+        ],
+        [
+          "play_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "traffic",
+      "layer": "ODS",
+      "name": "ods_video_play"
+    },
+    {
+      "columns": [
+        [
+          "interaction_id",
+          "BIGINT"
+        ],
+        [
+          "play_id",
+          "BIGINT"
+        ],
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "video_id",
+          "BIGINT"
+        ],
+        [
+          "interaction_type",
+          "VARCHAR"
+        ],
+        [
+          "event_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "content",
+      "layer": "ODS",
+      "name": "ods_user_interaction"
+    },
+    {
+      "columns": [
+        [
+          "search_id",
+          "BIGINT"
+        ],
+        [
+          "session_id",
+          "BIGINT"
+        ],
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "query",
+          "VARCHAR"
+        ],
+        [
+          "result_count",
+          "INTEGER"
+        ],
+        [
+          "event_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "traffic",
+      "layer": "ODS",
+      "name": "ods_search_event"
+    },
+    {
+      "columns": [
+        [
+          "session_id",
+          "BIGINT"
+        ],
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "device_id",
+          "BIGINT"
+        ],
+        [
+          "channel_id",
+          "BIGINT"
+        ],
+        [
+          "start_time",
+          "TIMESTAMP"
+        ],
+        [
+          "end_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "user",
+      "layer": "ODS",
+      "name": "ods_user_session"
+    },
+    {
+      "columns": [
+        [
+          "ad_request_id",
+          "BIGINT"
+        ],
+        [
+          "request_id",
+          "BIGINT"
+        ],
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "ad_slot_id",
+          "BIGINT"
+        ],
+        [
+          "audience_id",
+          "BIGINT"
+        ],
+        [
+          "request_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "ad_inventory",
+      "layer": "ODS",
+      "name": "ods_ad_request"
+    },
+    {
+      "columns": [
+        [
+          "candidate_id",
+          "BIGINT"
+        ],
+        [
+          "ad_request_id",
+          "BIGINT"
+        ],
+        [
+          "ad_creative_id",
+          "BIGINT"
+        ],
+        [
+          "ad_group_id",
+          "BIGINT"
+        ],
+        [
+          "campaign_id",
+          "BIGINT"
+        ],
+        [
+          "advertiser_id",
+          "BIGINT"
+        ],
+        [
+          "predicted_ctr",
+          "DOUBLE"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "ad_inventory",
+      "layer": "ODS",
+      "name": "ods_ad_candidate"
+    },
+    {
+      "columns": [
+        [
+          "bid_id",
+          "BIGINT"
+        ],
+        [
+          "candidate_id",
+          "BIGINT"
+        ],
+        [
+          "bid_price",
+          "DOUBLE"
+        ],
+        [
+          "is_winner",
+          "BOOLEAN"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "ad_delivery",
+      "layer": "ODS",
+      "name": "ods_ad_bid"
+    },
+    {
+      "columns": [
+        [
+          "ad_impression_id",
+          "BIGINT"
+        ],
+        [
+          "ad_request_id",
+          "BIGINT"
+        ],
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "ad_creative_id",
+          "BIGINT"
+        ],
+        [
+          "campaign_id",
+          "BIGINT"
+        ],
+        [
+          "advertiser_id",
+          "BIGINT"
+        ],
+        [
+          "ad_slot_id",
+          "BIGINT"
+        ],
+        [
+          "impression_time",
+          "TIMESTAMP"
+        ],
+        [
+          "cost",
+          "DOUBLE"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "ad_delivery",
+      "layer": "ODS",
+      "name": "ods_ad_impression"
+    },
+    {
+      "columns": [
+        [
+          "ad_click_id",
+          "BIGINT"
+        ],
+        [
+          "ad_impression_id",
+          "BIGINT"
+        ],
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "ad_creative_id",
+          "BIGINT"
+        ],
+        [
+          "campaign_id",
+          "BIGINT"
+        ],
+        [
+          "click_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "ad_delivery",
+      "layer": "ODS",
+      "name": "ods_ad_click"
+    },
+    {
+      "columns": [
+        [
+          "conversion_id",
+          "BIGINT"
+        ],
+        [
+          "ad_click_id",
+          "BIGINT"
+        ],
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "ad_creative_id",
+          "BIGINT"
+        ],
+        [
+          "campaign_id",
+          "BIGINT"
+        ],
+        [
+          "conversion_type",
+          "VARCHAR"
+        ],
+        [
+          "conversion_value",
+          "DOUBLE"
+        ],
+        [
+          "conversion_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "attribution",
+      "layer": "ODS",
+      "name": "ods_ad_conversion"
+    },
+    {
+      "columns": [
+        [
+          "charge_id",
+          "BIGINT"
+        ],
+        [
+          "ad_impression_id",
+          "BIGINT"
+        ],
+        [
+          "advertiser_id",
+          "BIGINT"
+        ],
+        [
+          "campaign_id",
+          "BIGINT"
+        ],
+        [
+          "amount",
+          "DOUBLE"
+        ],
+        [
+          "charge_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "billing",
+      "layer": "ODS",
+      "name": "ods_ad_charge"
+    },
+    {
+      "columns": [
+        [
+          "refund_id",
+          "BIGINT"
+        ],
+        [
+          "charge_id",
+          "BIGINT"
+        ],
+        [
+          "advertiser_id",
+          "BIGINT"
+        ],
+        [
+          "amount",
+          "DOUBLE"
+        ],
+        [
+          "reason",
+          "VARCHAR"
+        ],
+        [
+          "refund_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "billing",
+      "layer": "ODS",
+      "name": "ods_ad_refund"
+    },
+    {
+      "columns": [
+        [
+          "snapshot_id",
+          "BIGINT"
+        ],
+        [
+          "campaign_id",
+          "BIGINT"
+        ],
+        [
+          "budget",
+          "DOUBLE"
+        ],
+        [
+          "spent",
+          "DOUBLE"
+        ],
+        [
+          "snapshot_date",
+          "DATE"
+        ]
+      ],
+      "domain": "billing",
+      "layer": "ODS",
+      "name": "ods_budget_snapshot"
+    },
+    {
+      "columns": [
+        [
+          "audit_id",
+          "BIGINT"
+        ],
+        [
+          "video_id",
+          "BIGINT"
+        ],
+        [
+          "audit_status",
+          "VARCHAR"
+        ],
+        [
+          "risk_score",
+          "DOUBLE"
+        ],
+        [
+          "audit_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "risk",
+      "layer": "ODS",
+      "name": "ods_content_audit"
+    },
+    {
+      "columns": [
+        [
+          "audit_id",
+          "BIGINT"
+        ],
+        [
+          "ad_creative_id",
+          "BIGINT"
+        ],
+        [
+          "audit_status",
+          "VARCHAR"
+        ],
+        [
+          "risk_score",
+          "DOUBLE"
+        ],
+        [
+          "audit_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "risk",
+      "layer": "ODS",
+      "name": "ods_ad_audit"
+    },
+    {
+      "columns": [
+        [
+          "signal_id",
+          "BIGINT"
+        ],
+        [
+          "request_id",
+          "BIGINT"
+        ],
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "signal_type",
+          "VARCHAR"
+        ],
+        [
+          "risk_score",
+          "DOUBLE"
+        ],
+        [
+          "event_time",
+          "TIMESTAMP"
+        ],
+        [
+          "event_date",
+          "DATE"
+        ]
+      ],
+      "domain": "risk",
+      "layer": "ODS",
+      "name": "ods_invalid_traffic_signal"
+    },
+    {
+      "columns": [
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "register_date",
+          "DATE"
+        ],
+        [
+          "country_code",
+          "VARCHAR"
+        ],
+        [
+          "age_bucket",
+          "VARCHAR"
+        ],
+        [
+          "audience_id",
+          "BIGINT"
+        ]
+      ],
+      "domain": "user",
+      "layer": "DIM",
+      "name": "dim_user"
+    },
+    {
+      "columns": [
+        [
+          "creator_id",
+          "BIGINT"
+        ],
+        [
+          "user_id",
+          "BIGINT"
+        ],
+        [
+          "creator_tier",
+          "VARCHAR"
+        ]
+      ],
+      "domain": "content",
+      "layer": "DIM",
+      "name": "dim_creator"
+    },
+    {
+      "columns": [
+        [
+          "video_id",
+          "BIGINT"
+        ],
+        [
+          "creator_id",
+          "BIGINT"
+        ],
+        [
+          "category_id",
+          "BIGINT"
+        ],
+        [
+          "duration_sec",
+          "INTEGER"
+        ],
+        [
+          "publish_date",
+          "DATE"
+        ],
+        [
+          "content_status",
+          "VARCHAR"
+        ]
+      ],
+      "domain": "content",
+      "layer": "DIM",
+      "name": "dim_video"
+    },
+    {
+      "columns": [
+        [
+          "category_id",
+          "BIGINT"
+        ],
+        [
+          "category_name",
+          "VARCHAR"
+        ]
+      ],
+      "domain": "content",
+      "layer": "DIM",
+      "name": "dim_content_category"
+    },
+    {
+      "columns": [
+        [
+          "device_id",
+          "BIGINT"
+        ],
+        [
+          "device_type",
+          "VARCHAR"
+        ],
+        [
+          "os",
+          "VARCHAR"
+        ]
+      ],
+      "domain": "user",
+      "layer": "DIM",
+      "name": "dim_device"
+    },
+    {
+      "columns": [
+        [
+          "geo_id",
+          "BIGINT"
+        ],
+        [
+          "country_code",
+          "VARCHAR"
+        ],
+        [
+          "region",
+          "VARCHAR"
+        ]
+      ],
+      "domain": "user",
+      "layer": "DIM",
+      "name": "dim_geo"
+    },
+    {
+      "columns": [
+        [
+          "channel_id",
+          "BIGINT"
+        ],
+        [
+          "channel_name",
+          "VARCHAR"
+        ]
+      ],
+      "domain": "traffic",
+      "layer": "DIM",
+      "name": "dim_channel"
+    },
+    {
+      "columns": [
+        [
+          "advertiser_id",
+          "BIGINT"
+        ],
+        [
+          "advertiser_name",
+          "VARCHAR"
+        ],
+        [
+          "industry",
+          "VARCHAR"
+        ]
+      ],
+      "domain": "billing",
+      "layer": "DIM",
+      "name": "dim_advertiser"
+    },
+    {
+      "columns": [
+        [
+          "campaign_id",
+          "BIGINT"
+        ],
+        [
+          "advertiser_id",
+          "BIGINT"
+        ],
+        [
+          "budget",
+          "DOUBLE"
+        ],
+        [
+          "objective",
+          "VARCHAR"
+        ],
+        [
+          "status",
+          "VARCHAR"
+        ]
+      ],
+      "domain": "ad_delivery",
+      "layer": "DIM",
+      "name": "dim_campaign"
+    },
+    {
+      "columns": [
+        [
+          "ad_group_id",
+          "BIGINT"
+        ],
+        [
+          "campaign_id",
+          "BIGINT"
+        ],
+        [
+          "audience_id",
+          "BIGINT"
+        ],
+        [
+          "bid_type",
+          "VARCHAR"
+        ],
+        [
+          "bid_value",
+          "DOUBLE"
+        ]
+      ],
+      "domain": "ad_delivery",
+      "layer": "DIM",
+      "name": "dim_ad_group"
+    },
+    {
+      "columns": [
+        [
+          "ad_creative_id",
+          "BIGINT"
+        ],
+        [
+          "ad_group_id",
+          "BIGINT"
+        ],
+        [
+          "video_id",
+          "BIGINT"
+        ],
+        [
+          "creative_format",
+          "VARCHAR"
+        ],
+        [
+          "status",
+          "VARCHAR"
+        ]
+      ],
+      "domain": "ad_delivery",
+      "layer": "DIM",
+      "name": "dim_ad_creative"
+    },
+    {
+      "columns": [
+        [
+          "ad_slot_id",
+          "BIGINT"
+        ],
+        [
+          "slot_name",
+          "VARCHAR"
+        ],
+        [
+          "scene",
+          "VARCHAR"
+        ],
+        [
+          "floor_price",
+          "DOUBLE"
+        ]
+      ],
+      "domain": "ad_inventory",
+      "layer": "DIM",
+      "name": "dim_ad_slot"
+    },
+    {
+      "columns": [
+        [
+          "experiment_id",
+          "BIGINT"
+        ],
+        [
+          "experiment_name",
+          "VARCHAR"
+        ],
+        [
+          "variant",
+          "VARCHAR"
+        ]
+      ],
+      "domain": "experiment",
+      "layer": "DIM",
+      "name": "dim_experiment"
+    },
+    {
+      "columns": [
+        [
+          "audience_id",
+          "BIGINT"
+        ],
+        [
+          "audience_name",
+          "VARCHAR"
+        ],
+        [
+          "strategy",
+          "VARCHAR"
+        ]
+      ],
+      "domain": "experiment",
+      "layer": "DIM",
+      "name": "dim_audience"
+    },
+    {
+      "columns": [],
+      "domain": "recommendation",
+      "layer": "STG",
+      "name": "stg_recommend_request"
+    },
+    {
+      "columns": [],
+      "domain": "traffic",
+      "layer": "STG",
+      "name": "stg_video_exposure"
+    },
+    {
+      "columns": [],
+      "domain": "traffic",
+      "layer": "STG",
+      "name": "stg_video_play"
+    },
+    {
+      "columns": [],
+      "domain": "content",
+      "layer": "STG",
+      "name": "stg_user_interaction"
+    },
+    {
+      "columns": [],
+      "domain": "traffic",
+      "layer": "STG",
+      "name": "stg_search_event"
+    },
+    {
+      "columns": [],
+      "domain": "user",
+      "layer": "STG",
+      "name": "stg_user_session"
+    },
+    {
+      "columns": [],
+      "domain": "ad_inventory",
+      "layer": "STG",
+      "name": "stg_ad_request"
+    },
+    {
+      "columns": [],
+      "domain": "ad_inventory",
+      "layer": "STG",
+      "name": "stg_ad_candidate"
+    },
+    {
+      "columns": [],
+      "domain": "ad_delivery",
+      "layer": "STG",
+      "name": "stg_ad_bid"
+    },
+    {
+      "columns": [],
+      "domain": "ad_delivery",
+      "layer": "STG",
+      "name": "stg_ad_impression"
+    },
+    {
+      "columns": [],
+      "domain": "ad_delivery",
+      "layer": "STG",
+      "name": "stg_ad_click"
+    },
+    {
+      "columns": [],
+      "domain": "attribution",
+      "layer": "STG",
+      "name": "stg_ad_conversion"
+    },
+    {
+      "columns": [],
+      "domain": "billing",
+      "layer": "STG",
+      "name": "stg_ad_charge"
+    },
+    {
+      "columns": [],
+      "domain": "billing",
+      "layer": "STG",
+      "name": "stg_ad_refund"
+    },
+    {
+      "columns": [],
+      "domain": "billing",
+      "layer": "STG",
+      "name": "stg_budget_snapshot"
+    },
+    {
+      "columns": [],
+      "domain": "risk",
+      "layer": "STG",
+      "name": "stg_content_audit"
+    },
+    {
+      "columns": [],
+      "domain": "risk",
+      "layer": "STG",
+      "name": "stg_ad_audit"
+    },
+    {
+      "columns": [],
+      "domain": "risk",
+      "layer": "STG",
+      "name": "stg_invalid_traffic_signal"
+    },
+    {
+      "columns": [],
+      "domain": "recommendation",
+      "layer": "DWD",
+      "name": "dwd_recommend_request_fact"
+    },
+    {
+      "columns": [],
+      "domain": "traffic",
+      "layer": "DWD",
+      "name": "dwd_video_exposure_fact"
+    },
+    {
+      "columns": [],
+      "domain": "traffic",
+      "layer": "DWD",
+      "name": "dwd_video_play_fact"
+    },
+    {
+      "columns": [],
+      "domain": "content",
+      "layer": "DWD",
+      "name": "dwd_user_interaction_fact"
+    },
+    {
+      "columns": [],
+      "domain": "traffic",
+      "layer": "DWD",
+      "name": "dwd_search_fact"
+    },
+    {
+      "columns": [],
+      "domain": "user",
+      "layer": "DWD",
+      "name": "dwd_session_fact"
+    },
+    {
+      "columns": [],
+      "domain": "ad_inventory",
+      "layer": "DWD",
+      "name": "dwd_ad_opportunity_fact"
+    },
+    {
+      "columns": [],
+      "domain": "ad_inventory",
+      "layer": "DWD",
+      "name": "dwd_ad_candidate_fact"
+    },
+    {
+      "columns": [],
+      "domain": "ad_delivery",
+      "layer": "DWD",
+      "name": "dwd_ad_auction_fact"
+    },
+    {
+      "columns": [],
+      "domain": "ad_delivery",
+      "layer": "DWD",
+      "name": "dwd_ad_delivery_fact"
+    },
+    {
+      "columns": [],
+      "domain": "ad_delivery",
+      "layer": "DWD",
+      "name": "dwd_ad_click_fact"
+    },
+    {
+      "columns": [],
+      "domain": "attribution",
+      "layer": "DWD",
+      "name": "dwd_ad_conversion_fact"
+    },
+    {
+      "columns": [],
+      "domain": "attribution",
+      "layer": "DWD",
+      "name": "dwd_attribution_touch_fact"
+    },
+    {
+      "columns": [],
+      "domain": "attribution",
+      "layer": "DWD",
+      "name": "dwd_ad_attribution_wide"
+    },
+    {
+      "columns": [],
+      "domain": "billing",
+      "layer": "DWD",
+      "name": "dwd_billing_fact"
+    },
+    {
+      "columns": [],
+      "domain": "billing",
+      "layer": "DWD",
+      "name": "dwd_refund_fact"
+    },
+    {
+      "columns": [],
+      "domain": "billing",
+      "layer": "DWD",
+      "name": "dwd_budget_fact"
+    },
+    {
+      "columns": [],
+      "domain": "risk",
+      "layer": "DWD",
+      "name": "dwd_risk_event_fact"
+    },
+    {
+      "columns": [],
+      "domain": "traffic",
+      "layer": "DWS",
+      "name": "dws_video_traffic_daily"
+    },
+    {
+      "columns": [],
+      "domain": "content",
+      "layer": "DWS",
+      "name": "dws_creator_traffic_daily"
+    },
+    {
+      "columns": [],
+      "domain": "user",
+      "layer": "DWS",
+      "name": "dws_user_engagement_daily"
+    },
+    {
+      "columns": [],
+      "domain": "traffic",
+      "layer": "DWS",
+      "name": "dws_channel_traffic_daily"
+    },
+    {
+      "columns": [],
+      "domain": "content",
+      "layer": "DWS",
+      "name": "dws_category_traffic_daily"
+    },
+    {
+      "columns": [],
+      "domain": "ad_inventory",
+      "layer": "DWS",
+      "name": "dws_ad_slot_funnel_daily"
+    },
+    {
+      "columns": [],
+      "domain": "ad_delivery",
+      "layer": "DWS",
+      "name": "dws_campaign_delivery_daily"
+    },
+    {
+      "columns": [],
+      "domain": "ad_delivery",
+      "layer": "DWS",
+      "name": "dws_creative_performance_daily"
+    },
+    {
+      "columns": [],
+      "domain": "billing",
+      "layer": "DWS",
+      "name": "dws_advertiser_performance_daily"
+    },
+    {
+      "columns": [],
+      "domain": "experiment",
+      "layer": "DWS",
+      "name": "dws_audience_performance_daily"
+    },
+    {
+      "columns": [],
+      "domain": "experiment",
+      "layer": "DWS",
+      "name": "dws_experiment_daily"
+    },
+    {
+      "columns": [],
+      "domain": "ad_inventory",
+      "layer": "DWS",
+      "name": "dws_monetization_funnel_daily"
+    },
+    {
+      "columns": [],
+      "domain": "billing",
+      "layer": "DWS",
+      "name": "dws_revenue_daily"
+    },
+    {
+      "columns": [],
+      "domain": "attribution",
+      "layer": "DWS",
+      "name": "dws_roi_daily"
+    },
+    {
+      "columns": [],
+      "domain": "billing",
+      "layer": "DWS",
+      "name": "dws_budget_pacing_daily"
+    },
+    {
+      "columns": [],
+      "domain": "risk",
+      "layer": "DWS",
+      "name": "dws_risk_daily"
+    },
+    {
+      "columns": [],
+      "domain": "traffic",
+      "layer": "ADS",
+      "name": "ads_traffic_overview"
+    },
+    {
+      "columns": [],
+      "domain": "content",
+      "layer": "ADS",
+      "name": "ads_creator_dashboard"
+    },
+    {
+      "columns": [],
+      "domain": "content",
+      "layer": "ADS",
+      "name": "ads_content_efficiency_report"
+    },
+    {
+      "columns": [],
+      "domain": "ad_inventory",
+      "layer": "ADS",
+      "name": "ads_ad_operation_dashboard"
+    },
+    {
+      "columns": [],
+      "domain": "billing",
+      "layer": "ADS",
+      "name": "ads_advertiser_report"
+    },
+    {
+      "columns": [],
+      "domain": "ad_delivery",
+      "layer": "ADS",
+      "name": "ads_campaign_monitor"
+    },
+    {
+      "columns": [],
+      "domain": "ad_delivery",
+      "layer": "ADS",
+      "name": "ads_creative_report"
+    },
+    {
+      "columns": [],
+      "domain": "billing",
+      "layer": "ADS",
+      "name": "ads_revenue_dashboard"
+    },
+    {
+      "columns": [],
+      "domain": "experiment",
+      "layer": "ADS",
+      "name": "ads_experiment_report"
+    },
+    {
+      "columns": [],
+      "domain": "risk",
+      "layer": "ADS",
+      "name": "ads_risk_dashboard"
+    }
+  ],
+  "task_count": 62,
+  "tasks": [
+    {
+      "dependencies": [
+        "ods_recommend_request"
+      ],
+      "description": "标准化 ods_recommend_request 并去除完全重复记录",
+      "domain": "recommendation",
+      "file": "001_stg_recommend_request.sql",
+      "layer": "STG",
+      "order": 1,
+      "target": "stg_recommend_request"
+    },
+    {
+      "dependencies": [
+        "ods_video_exposure"
+      ],
+      "description": "标准化 ods_video_exposure 并去除完全重复记录",
+      "domain": "traffic",
+      "file": "002_stg_video_exposure.sql",
+      "layer": "STG",
+      "order": 2,
+      "target": "stg_video_exposure"
+    },
+    {
+      "dependencies": [
+        "ods_video_play"
+      ],
+      "description": "标准化 ods_video_play 并去除完全重复记录",
+      "domain": "traffic",
+      "file": "003_stg_video_play.sql",
+      "layer": "STG",
+      "order": 3,
+      "target": "stg_video_play"
+    },
+    {
+      "dependencies": [
+        "ods_user_interaction"
+      ],
+      "description": "标准化 ods_user_interaction 并去除完全重复记录",
+      "domain": "content",
+      "file": "004_stg_user_interaction.sql",
+      "layer": "STG",
+      "order": 4,
+      "target": "stg_user_interaction"
+    },
+    {
+      "dependencies": [
+        "ods_search_event"
+      ],
+      "description": "标准化 ods_search_event 并去除完全重复记录",
+      "domain": "traffic",
+      "file": "005_stg_search_event.sql",
+      "layer": "STG",
+      "order": 5,
+      "target": "stg_search_event"
+    },
+    {
+      "dependencies": [
+        "ods_user_session"
+      ],
+      "description": "标准化 ods_user_session 并去除完全重复记录",
+      "domain": "user",
+      "file": "006_stg_user_session.sql",
+      "layer": "STG",
+      "order": 6,
+      "target": "stg_user_session"
+    },
+    {
+      "dependencies": [
+        "ods_ad_request"
+      ],
+      "description": "标准化 ods_ad_request 并去除完全重复记录",
+      "domain": "ad_inventory",
+      "file": "007_stg_ad_request.sql",
+      "layer": "STG",
+      "order": 7,
+      "target": "stg_ad_request"
+    },
+    {
+      "dependencies": [
+        "ods_ad_candidate"
+      ],
+      "description": "标准化 ods_ad_candidate 并去除完全重复记录",
+      "domain": "ad_inventory",
+      "file": "008_stg_ad_candidate.sql",
+      "layer": "STG",
+      "order": 8,
+      "target": "stg_ad_candidate"
+    },
+    {
+      "dependencies": [
+        "ods_ad_bid"
+      ],
+      "description": "标准化 ods_ad_bid 并去除完全重复记录",
+      "domain": "ad_delivery",
+      "file": "009_stg_ad_bid.sql",
+      "layer": "STG",
+      "order": 9,
+      "target": "stg_ad_bid"
+    },
+    {
+      "dependencies": [
+        "ods_ad_impression"
+      ],
+      "description": "标准化 ods_ad_impression 并去除完全重复记录",
+      "domain": "ad_delivery",
+      "file": "010_stg_ad_impression.sql",
+      "layer": "STG",
+      "order": 10,
+      "target": "stg_ad_impression"
+    },
+    {
+      "dependencies": [
+        "ods_ad_click"
+      ],
+      "description": "标准化 ods_ad_click 并去除完全重复记录",
+      "domain": "ad_delivery",
+      "file": "011_stg_ad_click.sql",
+      "layer": "STG",
+      "order": 11,
+      "target": "stg_ad_click"
+    },
+    {
+      "dependencies": [
+        "ods_ad_conversion"
+      ],
+      "description": "标准化 ods_ad_conversion 并去除完全重复记录",
+      "domain": "attribution",
+      "file": "012_stg_ad_conversion.sql",
+      "layer": "STG",
+      "order": 12,
+      "target": "stg_ad_conversion"
+    },
+    {
+      "dependencies": [
+        "ods_ad_charge"
+      ],
+      "description": "标准化 ods_ad_charge 并去除完全重复记录",
+      "domain": "billing",
+      "file": "013_stg_ad_charge.sql",
+      "layer": "STG",
+      "order": 13,
+      "target": "stg_ad_charge"
+    },
+    {
+      "dependencies": [
+        "ods_ad_refund"
+      ],
+      "description": "标准化 ods_ad_refund 并去除完全重复记录",
+      "domain": "billing",
+      "file": "014_stg_ad_refund.sql",
+      "layer": "STG",
+      "order": 14,
+      "target": "stg_ad_refund"
+    },
+    {
+      "dependencies": [
+        "ods_budget_snapshot"
+      ],
+      "description": "标准化 ods_budget_snapshot 并去除完全重复记录",
+      "domain": "billing",
+      "file": "015_stg_budget_snapshot.sql",
+      "layer": "STG",
+      "order": 15,
+      "target": "stg_budget_snapshot"
+    },
+    {
+      "dependencies": [
+        "ods_content_audit"
+      ],
+      "description": "标准化 ods_content_audit 并去除完全重复记录",
+      "domain": "risk",
+      "file": "016_stg_content_audit.sql",
+      "layer": "STG",
+      "order": 16,
+      "target": "stg_content_audit"
+    },
+    {
+      "dependencies": [
+        "ods_ad_audit"
+      ],
+      "description": "标准化 ods_ad_audit 并去除完全重复记录",
+      "domain": "risk",
+      "file": "017_stg_ad_audit.sql",
+      "layer": "STG",
+      "order": 17,
+      "target": "stg_ad_audit"
+    },
+    {
+      "dependencies": [
+        "ods_invalid_traffic_signal"
+      ],
+      "description": "标准化 ods_invalid_traffic_signal 并去除完全重复记录",
+      "domain": "risk",
+      "file": "018_stg_invalid_traffic_signal.sql",
+      "layer": "STG",
+      "order": 18,
+      "target": "stg_invalid_traffic_signal"
+    },
+    {
+      "dependencies": [
+        "stg_recommend_request",
+        "dim_user",
+        "dim_device",
+        "dim_geo",
+        "dim_channel",
+        "dim_experiment"
+      ],
+      "description": "推荐请求明细宽表",
+      "domain": "recommendation",
+      "file": "019_dwd_recommend_request_fact.sql",
+      "layer": "DWD",
+      "order": 19,
+      "target": "dwd_recommend_request_fact"
+    },
+    {
+      "dependencies": [
+        "stg_video_exposure",
+        "dim_video",
+        "dim_creator",
+        "dim_content_category"
+      ],
+      "description": "视频曝光明细宽表",
+      "domain": "traffic",
+      "file": "020_dwd_video_exposure_fact.sql",
+      "layer": "DWD",
+      "order": 20,
+      "target": "dwd_video_exposure_fact"
+    },
+    {
+      "dependencies": [
+        "stg_video_play",
+        "dim_video"
+      ],
+      "description": "视频播放及有效播放事实",
+      "domain": "traffic",
+      "file": "021_dwd_video_play_fact.sql",
+      "layer": "DWD",
+      "order": 21,
+      "target": "dwd_video_play_fact"
+    },
+    {
+      "dependencies": [
+        "stg_user_interaction",
+        "dim_video"
+      ],
+      "description": "用户互动明细",
+      "domain": "content",
+      "file": "022_dwd_user_interaction_fact.sql",
+      "layer": "DWD",
+      "order": 22,
+      "target": "dwd_user_interaction_fact"
+    },
+    {
+      "dependencies": [
+        "stg_search_event"
+      ],
+      "description": "搜索行为事实",
+      "domain": "traffic",
+      "file": "023_dwd_search_fact.sql",
+      "layer": "DWD",
+      "order": 23,
+      "target": "dwd_search_fact"
+    },
+    {
+      "dependencies": [
+        "stg_user_session",
+        "dim_device",
+        "dim_channel"
+      ],
+      "description": "用户会话事实",
+      "domain": "user",
+      "file": "024_dwd_session_fact.sql",
+      "layer": "DWD",
+      "order": 24,
+      "target": "dwd_session_fact"
+    },
+    {
+      "dependencies": [
+        "stg_ad_request",
+        "dim_ad_slot",
+        "dim_audience"
+      ],
+      "description": "广告机会明细",
+      "domain": "ad_inventory",
+      "file": "025_dwd_ad_opportunity_fact.sql",
+      "layer": "DWD",
+      "order": 25,
+      "target": "dwd_ad_opportunity_fact"
+    },
+    {
+      "dependencies": [
+        "stg_ad_candidate",
+        "dim_ad_creative",
+        "dim_ad_group"
+      ],
+      "description": "广告候选召回明细",
+      "domain": "ad_inventory",
+      "file": "026_dwd_ad_candidate_fact.sql",
+      "layer": "DWD",
+      "order": 26,
+      "target": "dwd_ad_candidate_fact"
+    },
+    {
+      "dependencies": [
+        "stg_ad_bid",
+        "dwd_ad_candidate_fact"
+      ],
+      "description": "竞价与胜出事实",
+      "domain": "ad_delivery",
+      "file": "027_dwd_ad_auction_fact.sql",
+      "layer": "DWD",
+      "order": 27,
+      "target": "dwd_ad_auction_fact"
+    },
+    {
+      "dependencies": [
+        "stg_ad_impression",
+        "dim_campaign",
+        "dim_ad_creative",
+        "dim_ad_slot"
+      ],
+      "description": "广告曝光投放事实",
+      "domain": "ad_delivery",
+      "file": "028_dwd_ad_delivery_fact.sql",
+      "layer": "DWD",
+      "order": 28,
+      "target": "dwd_ad_delivery_fact"
+    },
+    {
+      "dependencies": [
+        "stg_ad_click",
+        "dwd_ad_delivery_fact"
+      ],
+      "description": "广告点击事实",
+      "domain": "ad_delivery",
+      "file": "029_dwd_ad_click_fact.sql",
+      "layer": "DWD",
+      "order": 29,
+      "target": "dwd_ad_click_fact"
+    },
+    {
+      "dependencies": [
+        "stg_ad_conversion",
+        "dwd_ad_click_fact"
+      ],
+      "description": "广告转化事实",
+      "domain": "attribution",
+      "file": "030_dwd_ad_conversion_fact.sql",
+      "layer": "DWD",
+      "order": 30,
+      "target": "dwd_ad_conversion_fact"
+    },
+    {
+      "dependencies": [
+        "dwd_ad_click_fact",
+        "dwd_ad_conversion_fact"
+      ],
+      "description": "点击到转化的归因触点",
+      "domain": "attribution",
+      "file": "031_dwd_attribution_touch_fact.sql",
+      "layer": "DWD",
+      "order": 31,
+      "target": "dwd_attribution_touch_fact"
+    },
+    {
+      "dependencies": [
+        "dwd_ad_delivery_fact",
+        "dwd_ad_click_fact",
+        "dwd_ad_conversion_fact"
+      ],
+      "description": "曝光点击转化归因宽表",
+      "domain": "attribution",
+      "file": "032_dwd_ad_attribution_wide.sql",
+      "layer": "DWD",
+      "order": 32,
+      "target": "dwd_ad_attribution_wide"
+    },
+    {
+      "dependencies": [
+        "stg_ad_charge",
+        "dim_advertiser",
+        "dim_campaign"
+      ],
+      "description": "广告扣费事实",
+      "domain": "billing",
+      "file": "033_dwd_billing_fact.sql",
+      "layer": "DWD",
+      "order": 33,
+      "target": "dwd_billing_fact"
+    },
+    {
+      "dependencies": [
+        "stg_ad_refund",
+        "dwd_billing_fact"
+      ],
+      "description": "广告退款事实",
+      "domain": "billing",
+      "file": "034_dwd_refund_fact.sql",
+      "layer": "DWD",
+      "order": 34,
+      "target": "dwd_refund_fact"
+    },
+    {
+      "dependencies": [
+        "stg_budget_snapshot",
+        "dim_campaign"
+      ],
+      "description": "预算与消耗节奏事实",
+      "domain": "billing",
+      "file": "035_dwd_budget_fact.sql",
+      "layer": "DWD",
+      "order": 35,
+      "target": "dwd_budget_fact"
+    },
+    {
+      "dependencies": [
+        "stg_content_audit",
+        "stg_ad_audit",
+        "stg_invalid_traffic_signal"
+      ],
+      "description": "内容、广告与无效流量统一风险事实",
+      "domain": "risk",
+      "file": "036_dwd_risk_event_fact.sql",
+      "layer": "DWD",
+      "order": 36,
+      "target": "dwd_risk_event_fact"
+    },
+    {
+      "dependencies": [
+        "dwd_video_exposure_fact",
+        "dwd_video_play_fact",
+        "dwd_user_interaction_fact"
+      ],
+      "description": "视频流量效率日报",
+      "domain": "traffic",
+      "file": "037_dws_video_traffic_daily.sql",
+      "layer": "DWS",
+      "order": 37,
+      "target": "dws_video_traffic_daily"
+    },
+    {
+      "dependencies": [
+        "dws_video_traffic_daily",
+        "dim_video"
+      ],
+      "description": "作者流量日报",
+      "domain": "content",
+      "file": "038_dws_creator_traffic_daily.sql",
+      "layer": "DWS",
+      "order": 38,
+      "target": "dws_creator_traffic_daily"
+    },
+    {
+      "dependencies": [
+        "dwd_video_play_fact",
+        "dwd_user_interaction_fact"
+      ],
+      "description": "用户参与度日报",
+      "domain": "user",
+      "file": "039_dws_user_engagement_daily.sql",
+      "layer": "DWS",
+      "order": 39,
+      "target": "dws_user_engagement_daily"
+    },
+    {
+      "dependencies": [
+        "dwd_recommend_request_fact",
+        "dwd_video_exposure_fact"
+      ],
+      "description": "渠道流量日报",
+      "domain": "traffic",
+      "file": "040_dws_channel_traffic_daily.sql",
+      "layer": "DWS",
+      "order": 40,
+      "target": "dws_channel_traffic_daily"
+    },
+    {
+      "dependencies": [
+        "dwd_video_exposure_fact",
+        "dwd_video_play_fact"
+      ],
+      "description": "内容分类流量日报",
+      "domain": "content",
+      "file": "041_dws_category_traffic_daily.sql",
+      "layer": "DWS",
+      "order": 41,
+      "target": "dws_category_traffic_daily"
+    },
+    {
+      "dependencies": [
+        "dwd_ad_opportunity_fact",
+        "dwd_ad_delivery_fact",
+        "dwd_ad_click_fact",
+        "dwd_ad_conversion_fact"
+      ],
+      "description": "广告位请求到转化漏斗",
+      "domain": "ad_inventory",
+      "file": "042_dws_ad_slot_funnel_daily.sql",
+      "layer": "DWS",
+      "order": 42,
+      "target": "dws_ad_slot_funnel_daily"
+    },
+    {
+      "dependencies": [
+        "dwd_ad_attribution_wide"
+      ],
+      "description": "计划投放效果日报",
+      "domain": "ad_delivery",
+      "file": "043_dws_campaign_delivery_daily.sql",
+      "layer": "DWS",
+      "order": 43,
+      "target": "dws_campaign_delivery_daily"
+    },
+    {
+      "dependencies": [
+        "dwd_ad_attribution_wide",
+        "dim_ad_creative"
+      ],
+      "description": "素材效果日报（故意保留百分数 CTR 作为治理场景）",
+      "domain": "ad_delivery",
+      "file": "044_dws_creative_performance_daily.sql",
+      "layer": "DWS",
+      "order": 44,
+      "target": "dws_creative_performance_daily"
+    },
+    {
+      "dependencies": [
+        "dws_campaign_delivery_daily"
+      ],
+      "description": "广告主效果日报",
+      "domain": "billing",
+      "file": "045_dws_advertiser_performance_daily.sql",
+      "layer": "DWS",
+      "order": 45,
+      "target": "dws_advertiser_performance_daily"
+    },
+    {
+      "dependencies": [
+        "dwd_ad_attribution_wide",
+        "dim_user"
+      ],
+      "description": "受众效果日报",
+      "domain": "experiment",
+      "file": "046_dws_audience_performance_daily.sql",
+      "layer": "DWS",
+      "order": 46,
+      "target": "dws_audience_performance_daily"
+    },
+    {
+      "dependencies": [
+        "dwd_recommend_request_fact",
+        "dwd_video_exposure_fact",
+        "dwd_ad_opportunity_fact"
+      ],
+      "description": "实验流量与广告机会日报",
+      "domain": "experiment",
+      "file": "047_dws_experiment_daily.sql",
+      "layer": "DWS",
+      "order": 47,
+      "target": "dws_experiment_daily"
+    },
+    {
+      "dependencies": [
+        "dwd_ad_opportunity_fact",
+        "dwd_ad_candidate_fact",
+        "dwd_ad_auction_fact",
+        "dwd_ad_delivery_fact",
+        "dwd_ad_click_fact",
+        "dwd_ad_conversion_fact"
+      ],
+      "description": "商业化全漏斗日报",
+      "domain": "ad_inventory",
+      "file": "048_dws_monetization_funnel_daily.sql",
+      "layer": "DWS",
+      "order": 48,
+      "target": "dws_monetization_funnel_daily"
+    },
+    {
+      "dependencies": [
+        "dwd_billing_fact",
+        "dwd_refund_fact"
+      ],
+      "description": "平台广告收入日报",
+      "domain": "billing",
+      "file": "049_dws_revenue_daily.sql",
+      "layer": "DWS",
+      "order": 49,
+      "target": "dws_revenue_daily"
+    },
+    {
+      "dependencies": [
+        "dws_campaign_delivery_daily"
+      ],
+      "description": "计划 ROI 日报",
+      "domain": "attribution",
+      "file": "050_dws_roi_daily.sql",
+      "layer": "DWS",
+      "order": 50,
+      "target": "dws_roi_daily"
+    },
+    {
+      "dependencies": [
+        "dwd_budget_fact",
+        "dws_campaign_delivery_daily"
+      ],
+      "description": "预算节奏日报",
+      "domain": "billing",
+      "file": "051_dws_budget_pacing_daily.sql",
+      "layer": "DWS",
+      "order": 51,
+      "target": "dws_budget_pacing_daily"
+    },
+    {
+      "dependencies": [
+        "dwd_risk_event_fact"
+      ],
+      "description": "内容、广告与流量风险日报",
+      "domain": "risk",
+      "file": "052_dws_risk_daily.sql",
+      "layer": "DWS",
+      "order": 52,
+      "target": "dws_risk_daily"
+    },
+    {
+      "dependencies": [
+        "dws_channel_traffic_daily",
+        "dws_video_traffic_daily"
+      ],
+      "description": "平台流量总览",
+      "domain": "traffic",
+      "file": "053_ads_traffic_overview.sql",
+      "layer": "ADS",
+      "order": 53,
+      "target": "ads_traffic_overview"
+    },
+    {
+      "dependencies": [
+        "dws_creator_traffic_daily",
+        "dim_creator"
+      ],
+      "description": "作者流量与互动看板",
+      "domain": "content",
+      "file": "054_ads_creator_dashboard.sql",
+      "layer": "ADS",
+      "order": 54,
+      "target": "ads_creator_dashboard"
+    },
+    {
+      "dependencies": [
+        "dws_category_traffic_daily"
+      ],
+      "description": "内容分类效率报告",
+      "domain": "content",
+      "file": "055_ads_content_efficiency_report.sql",
+      "layer": "ADS",
+      "order": 55,
+      "target": "ads_content_efficiency_report"
+    },
+    {
+      "dependencies": [
+        "dws_monetization_funnel_daily",
+        "dws_revenue_daily"
+      ],
+      "description": "广告运营总览",
+      "domain": "ad_inventory",
+      "file": "056_ads_ad_operation_dashboard.sql",
+      "layer": "ADS",
+      "order": 56,
+      "target": "ads_ad_operation_dashboard"
+    },
+    {
+      "dependencies": [
+        "dws_advertiser_performance_daily",
+        "dws_revenue_daily",
+        "dim_advertiser"
+      ],
+      "description": "广告主经营报告",
+      "domain": "billing",
+      "file": "057_ads_advertiser_report.sql",
+      "layer": "ADS",
+      "order": 57,
+      "target": "ads_advertiser_report"
+    },
+    {
+      "dependencies": [
+        "dws_campaign_delivery_daily",
+        "dws_budget_pacing_daily",
+        "dim_campaign"
+      ],
+      "description": "计划投放与预算监控",
+      "domain": "ad_delivery",
+      "file": "058_ads_campaign_monitor.sql",
+      "layer": "ADS",
+      "order": 58,
+      "target": "ads_campaign_monitor"
+    },
+    {
+      "dependencies": [
+        "dws_creative_performance_daily",
+        "dim_ad_creative"
+      ],
+      "description": "素材效果与 CTR 分级报告",
+      "domain": "ad_delivery",
+      "file": "059_ads_creative_report.sql",
+      "layer": "ADS",
+      "order": 59,
+      "target": "ads_creative_report"
+    },
+    {
+      "dependencies": [
+        "dws_revenue_daily",
+        "dws_roi_daily"
+      ],
+      "description": "商业收入与 ROI 驾驶舱",
+      "domain": "billing",
+      "file": "060_ads_revenue_dashboard.sql",
+      "layer": "ADS",
+      "order": 60,
+      "target": "ads_revenue_dashboard"
+    },
+    {
+      "dependencies": [
+        "dws_experiment_daily"
+      ],
+      "description": "实验流量与商业化效果报告",
+      "domain": "experiment",
+      "file": "061_ads_experiment_report.sql",
+      "layer": "ADS",
+      "order": 61,
+      "target": "ads_experiment_report"
+    },
+    {
+      "dependencies": [
+        "dws_risk_daily"
+      ],
+      "description": "商业化质量与风险驾驶舱",
+      "domain": "risk",
+      "file": "062_ads_risk_dashboard.sql",
+      "layer": "ADS",
+      "order": 62,
+      "target": "ads_risk_dashboard"
+    }
+  ]
+}
