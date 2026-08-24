@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Liyurun/SqlGraph/schemas/autonomy-decision-v1.schema.json",
+  "title": "SqlGraph Autonomy Decision v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "level",
+    "requires_human_review",
+    "evidence_version",
+    "reasons",
+    "reversibility_veto",
+    "evidence_veto",
+    "authorization_veto",
+    "scoring_performed",
+    "within_l5_scope",
+    "policy_version",
+    "decision_id"
+  ],
+  "properties": {
+    "level": {"enum": ["L0", "L1", "L2", "L3", "L4", "L5"]},
+    "requires_human_review": {"type": "boolean"},
+    "evidence_version": {"type": "string"},
+    "reasons": {"type": "array", "items": {"type": "string"}},
+    "reversibility_veto": {"type": "boolean"},
+    "evidence_veto": {"type": "boolean"},
+    "authorization_veto": {"type": "boolean"},
+    "scoring_performed": {"type": "boolean"},
+    "within_l5_scope": {"type": "boolean"},
+    "policy_version": {"type": "string"},
+    "decision_id": {"type": "string", "pattern": "^decision_[0-9a-f]{32}$"}
+  }
+}
