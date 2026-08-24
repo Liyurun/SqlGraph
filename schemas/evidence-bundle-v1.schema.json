@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Liyurun/SqlGraph/schemas/evidence-bundle-v1.schema.json",
+  "title": "SqlGraph Evidence Bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "rule_version",
+    "task_id",
+    "baseline_id",
+    "intent",
+    "anchors",
+    "version",
+    "version_id",
+    "subgraph_hash",
+    "included_nodes",
+    "included_edges",
+    "excluded",
+    "supporting",
+    "counterevidence",
+    "coverage_contract",
+    "gaps",
+    "residual_unknowns",
+    "external_facts",
+    "parent_hash",
+    "history"
+  ],
+  "properties": {
+    "schema_version": {"const": "evidence-bundle-v1"},
+    "rule_version": {"type": "string"},
+    "task_id": {"type": "string", "minLength": 1},
+    "baseline_id": {"type": "string", "minLength": 1},
+    "intent": {"type": "string", "minLength": 1},
+    "anchors": {"type": "array", "items": {"type": "string"}},
+    "version": {"type": "integer", "minimum": 1},
+    "version_id": {"type": "string", "minLength": 1},
+    "subgraph_hash": {"type": "string", "pattern": "^evidence_[0-9a-f]{64}$"},
+    "included_nodes": {"type": "array", "items": {"type": "string"}},
+    "included_edges": {"type": "array", "items": {"type": "string"}},
+    "excluded": {"type": "array", "items": {"type": "string"}},
+    "supporting": {"$ref": "#/$defs/findings"},
+    "counterevidence": {"$ref": "#/$defs/findings"},
+    "coverage_contract": {"type": "object"},
+    "gaps": {"type": "array", "items": {"type": "string"}},
+    "residual_unknowns": {"type": "array", "items": {"type": "string"}},
+    "external_facts": {"type": "array", "items": {"type": "string"}},
+    "parent_hash": {"type": ["string", "null"]},
+    "history": {"type": "array", "items": {"type": "object"}}
+  },
+  "$defs": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "summary", "citations"],
+        "properties": {
+          "kind": {"type": "string"},
+          "summary": {"type": "string"},
+          "citations": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  }
+}
