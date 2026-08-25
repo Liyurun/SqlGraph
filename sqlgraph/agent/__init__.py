@@ -5,7 +5,11 @@
 
 from dataclasses import dataclass, field
 
-from sqlgraph.autonomy import AutonomyLevel, decide_autonomy
+from sqlgraph.autonomy import (
+    AutonomyLevel,
+    reference_authorization_verifier,
+    decide_autonomy,
+)
 from sqlgraph.evidence import assess_sufficiency, build_evidence_subgraph
 from sqlgraph.lineage import drilldown
 from sqlgraph.reasoning import (
@@ -84,7 +88,12 @@ class GovernanceLoop:
         )
         sufficiency = assess_sufficiency(evidence)
         lineage = drilldown(self.graph, source_table, target_table)
-        decision = decide_autonomy(action)
+        authorization = reference_authorization_verifier().verify(
+            action.authorization_identity,
+            action.action_type,
+            action.authorization_scope,
+        )
+        decision = decide_autonomy(action, authorization)
         executed = (
             decision.level == AutonomyLevel.L3_BOUNDED
             and not decision.requires_human_review

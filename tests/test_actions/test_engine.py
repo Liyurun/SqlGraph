@@ -15,17 +15,25 @@ from sqlgraph.autonomy import (
     GovernanceAction,
     ReversibilityEvidence,
     decide_autonomy,
+    reference_authorization_verifier,
 )
 
 
 def _decision():
-    return decide_autonomy(GovernanceAction(
+    action = GovernanceAction(
         action_type="sql_patch",
         evidence_version="task-1@v1#abc",
         evidence_grounded=True,
         reversibility=ReversibilityEvidence(True, True, True),
         authorization_scope=AuthorizationScope.SINGLE_L3,
-    ))
+        authorization_identity="quickstart-policy",
+    )
+    authorization = reference_authorization_verifier().verify(
+        action.authorization_identity,
+        action.action_type,
+        action.authorization_scope,
+    )
+    return decide_autonomy(action, authorization)
 
 
 def _request(path, before, after, *, inject_failure=False):

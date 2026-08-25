@@ -30,6 +30,7 @@ from sqlgraph.autonomy import (
     GovernanceAction,
     ReversibilityEvidence,
     decide_autonomy,
+    reference_authorization_verifier,
 )
 from sqlgraph.contract import BusinessContract, GovernanceIssue
 from sqlgraph.evidence import build_evidence_subgraph
@@ -349,10 +350,16 @@ def run_ctr_governance(
         blast_radius=min(float(blast["score"]) / 10.0, 1.0),
         object_risk=0.4,
         authorization_scope=AuthorizationScope.SINGLE_L3,
+        authorization_identity="video-workbench-policy",
         historical_reliability=0.95,
         roi=0.9,
     )
-    decision = decide_autonomy(action)
+    authorization = reference_authorization_verifier().verify(
+        action.authorization_identity,
+        action.action_type,
+        action.authorization_scope,
+    )
+    decision = decide_autonomy(action, authorization)
     trail = GovernanceLoop(after_graph).run(
         TASK_ID,
         TARGET_TABLE,

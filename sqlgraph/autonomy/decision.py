@@ -7,8 +7,12 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from sqlgraph.identity import stable_id
+
+if TYPE_CHECKING:
+    from sqlgraph.autonomy.authorization import AuthorizationVerification
 
 
 POLICY_VERSION = "autonomy-v1"
@@ -81,6 +85,8 @@ class AutonomyDecision:
     reversibility_veto: bool = False
     evidence_veto: bool = False
     authorization_veto: bool = False
+    authorization_grant_id: str = ""
+    authorization_verifier: str = ""
     scoring_performed: bool = False
     within_l5_scope: bool = False
     policy_version: str = POLICY_VERSION
@@ -95,6 +101,8 @@ class AutonomyDecision:
             str(self.reversibility_veto),
             str(self.evidence_veto),
             str(self.authorization_veto),
+            self.authorization_grant_id,
+            self.authorization_verifier,
             *self.reasons,
         ))
         object.__setattr__(self, "decision_id", stable_id("decision", key, 128))
@@ -105,7 +113,10 @@ class AutonomyDecision:
         return result
 
 
-def decide_autonomy(action: GovernanceAction) -> AutonomyDecision:
+def decide_autonomy(
+    action: GovernanceAction,
+    authorization: "AuthorizationVerification | None" = None,
+) -> AutonomyDecision:
     reasons = []
 
     if not action.reversibility.verified:
@@ -144,6 +155,29 @@ def decide_autonomy(action: GovernanceAction) -> AutonomyDecision:
             reasons=tuple(reasons),
             authorization_veto=True,
         )
+    if (
+        authorization is None
+        or not authorization.verified
+        or authorization.identity != action.authorization_identity
+    ):
+        reasons.append(
+            authorization.reason
+            if authorization is not None
+            else "authorization verification is required"
+        )
+        return AutonomyDecision(
+            level=AutonomyLevel.L2_PROPOSE,
+            requires_human_review=True,
+            evidence_version=action.evidence_version,
+            reasons=tuple(reasons),
+            authorization_veto=True,
+            authorization_grant_id=(
+                authorization.grant_id if authorization is not None else ""
+            ),
+            authorization_verifier=(
+                authorization.verifier if authorization is not None else ""
+            ),
+        )
 
     review_reasons = []
     if action.blast_radius >= BLAST_RADIUS_REVIEW_THRESHOLD:
@@ -161,6 +195,8 @@ def decide_autonomy(action: GovernanceAction) -> AutonomyDecision:
             requires_human_review=True,
             evidence_version=action.evidence_version,
             reasons=tuple(reasons),
+            authorization_grant_id=authorization.grant_id,
+            authorization_verifier=authorization.verifier,
             scoring_performed=True,
         )
 
@@ -174,6 +210,8 @@ def decide_autonomy(action: GovernanceAction) -> AutonomyDecision:
         requires_human_review=False,
         evidence_version=action.evidence_version,
         reasons=tuple(reasons),
+        authorization_grant_id=authorization.grant_id,
+        authorization_verifier=authorization.verifier,
         scoring_performed=True,
         within_l5_scope=within_l5,
     )

@@ -39,6 +39,7 @@ def test_runner_exports_all_seven_steps(tmp_path):
         evidence_grounded=True,
         reversibility=ReversibilityEvidence(True, True, True),
         authorization_scope=AuthorizationScope.SINGLE_L3,
+        authorization_identity="quickstart-policy",
     )
     request = GovernanceRequest(
         task_id="task-1",

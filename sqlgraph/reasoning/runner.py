@@ -17,10 +17,12 @@ from sqlgraph.actions import (
 )
 from sqlgraph.audit import AuditEvent, AuditLog
 from sqlgraph.autonomy import (
+    AuthorizationVerifier,
     AutonomyDecision,
     AutonomyLevel,
     GovernanceAction,
     decide_autonomy,
+    reference_authorization_verifier,
 )
 from sqlgraph.baseline import BaselineManifest
 from sqlgraph.evidence import EvidenceBundle, EvidenceEngine, EvidenceRequest
@@ -95,11 +97,15 @@ class GovernanceRunner:
         action_engine: ActionEngine,
         verification_engine: VerificationEngine,
         audit_log: AuditLog,
+        authorization_verifier: AuthorizationVerifier | None = None,
     ):
         self.evidence_engine = evidence_engine
         self.action_engine = action_engine
         self.verification_engine = verification_engine
         self.audit_log = audit_log
+        self.authorization_verifier = (
+            authorization_verifier or reference_authorization_verifier()
+        )
 
     def run(self, request: GovernanceRequest) -> GovernanceResult:
         events = []
@@ -177,7 +183,12 @@ class GovernanceRunner:
             evidence_version=evidence.version_id,
             evidence_grounded=grounded,
         )
-        decision = decide_autonomy(action)
+        authorization = self.authorization_verifier.verify(
+            action.authorization_identity,
+            action.action_type,
+            action.authorization_scope,
+        )
+        decision = decide_autonomy(action, authorization)
         record(
             "authorize",
             decision.to_dict(),
