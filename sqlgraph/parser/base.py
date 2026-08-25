@@ -368,8 +368,7 @@ class SqlParser:
                     getattr(self, "_statement_source_start", 0):
                 ]
             )
-            already_in_target = any(t["name"] == tname for t in result.target_tables)
-            if not already_added and not already_in_target:
+            if not already_added:
                 result.source_tables.append({"name": tname, "alias": alias, "is_cte": is_cte})
                 if not is_cte:
                     self._current_source_tables.append(tname)
