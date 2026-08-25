@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import hashlib
 
-from sqlgraph.actions import ActionEngine, ActionRequest, SqlFilePatchAdapter
+import pytest
+
+from sqlgraph.actions import (
+    ActionEngine,
+    ActionRequest,
+    AdapterExecutionError,
+    SqlFilePatchAdapter,
+)
 from sqlgraph.autonomy import (
     AuthorizationScope,
     GovernanceAction,
@@ -38,6 +45,25 @@ def _request(path, before, after, *, inject_failure=False):
     )
 
 
+def _operation(
+    path,
+    before,
+    after,
+    *,
+    expected_content=None,
+    inject_failure=False,
+):
+    return {
+        "path": str(path),
+        "before": before,
+        "after": after,
+        "expected_sha256": hashlib.sha256(
+            (expected_content if expected_content is not None else before).encode()
+        ).hexdigest(),
+        "inject_failure_after_apply": inject_failure,
+    }
+
+
 def test_repeat_execution_is_noop(tmp_path):
     path = tmp_path / "query.sql"
     path.write_text("SELECT value * 100 FROM source", encoding="utf-8")
@@ -68,3 +94,40 @@ def test_dry_run_does_not_modify_target(tmp_path):
 
     assert result.status == "ready"
     assert path.read_text(encoding="utf-8") == before
+
+
+def test_sequential_dry_run_uses_simulated_content(tmp_path):
+    path = tmp_path / "query.sql"
+    path.write_text("A B", encoding="utf-8")
+    operations = (
+        _operation(path, "A B", "X B"),
+        _operation(path, "X B", "X Y"),
+    )
+
+    checks = SqlFilePatchAdapter().dry_run(operations)
+
+    assert len(checks) == 2
+    assert path.read_text(encoding="utf-8") == "A B"
+
+
+def test_multi_patch_failure_restores_true_original(tmp_path):
+    path = tmp_path / "query.sql"
+    path.write_text("A B", encoding="utf-8")
+    operations = (
+        _operation(path, "A", "X", expected_content="A B"),
+        _operation(
+            path,
+            "B",
+            "Y",
+            expected_content="X B",
+            inject_failure=True,
+        ),
+    )
+    adapter = SqlFilePatchAdapter()
+
+    with pytest.raises(AdapterExecutionError) as caught:
+        adapter.execute(operations)
+    rollback = adapter.rollback(caught.value.rollback_state)
+
+    assert rollback.verified
+    assert path.read_text(encoding="utf-8") == "A B"
