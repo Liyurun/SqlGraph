@@ -83,6 +83,23 @@ def test_repeat_execution_is_noop(tmp_path):
     assert path.read_text(encoding="utf-8") == "SELECT value FROM source"
 
 
+def test_rolled_back_execution_is_not_cached_as_success(tmp_path):
+    path = tmp_path / "query.sql"
+    before = "SELECT value * 100 FROM source"
+    path.write_text(before, encoding="utf-8")
+    engine = ActionEngine([SqlFilePatchAdapter()])
+    plan = engine.plan(_request(path, before, "SELECT value FROM source"))
+
+    execution = engine.execute(plan)
+    rollback = engine.rollback_execution(plan, execution)
+    repeated = engine.execute(plan)
+
+    assert rollback.verified
+    assert repeated.status == "blocked"
+    assert repeated.status != "noop"
+    assert path.read_text(encoding="utf-8") == before
+
+
 def test_dry_run_does_not_modify_target(tmp_path):
     path = tmp_path / "query.sql"
     before = "SELECT value * 100 FROM source"

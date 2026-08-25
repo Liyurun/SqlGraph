@@ -134,5 +134,13 @@ class ActionEngine:
                 f"rollback state is unavailable: {execution.execution_id}"
             )
         result = self._adapters[plan.adapter].rollback(state)
+        self._executions[plan.idempotency_key] = replace(
+            execution,
+            status="rolled_back" if result.verified else "rollback_failed",
+            circuit_open=True,
+            rollback=result,
+            error="" if result.verified else result.error,
+        )
+        self._rollback_states.pop(execution.execution_id, None)
         self.circuit_open = True
         return result
