@@ -6,9 +6,9 @@
 from dataclasses import dataclass, field
 
 from sqlgraph.autonomy import (
+    AuthorizationVerifier,
     AutonomyLevel,
     reference_authorization_verifier,
-    decide_autonomy,
 )
 from sqlgraph.evidence import assess_sufficiency, build_evidence_subgraph
 from sqlgraph.lineage import drilldown
@@ -17,6 +17,7 @@ from sqlgraph.reasoning import (
     GovernanceRequest,
     GovernanceResult,
     GovernanceRunner,
+    prepare_autonomy_decision,
 )
 from sqlgraph.verify import verify
 
@@ -65,10 +66,17 @@ class AuditTrail:
 
 
 class GovernanceLoop:
-    """Compatibility facade for the original graph-only demonstration."""
+    """Deprecated compatibility facade for the graph-only demonstration."""
 
-    def __init__(self, graph):
+    def __init__(
+        self,
+        graph,
+        authorization_verifier: AuthorizationVerifier | None = None,
+    ):
         self.graph = graph
+        self.authorization_verifier = (
+            authorization_verifier or reference_authorization_verifier()
+        )
 
     def run(
         self,
@@ -88,12 +96,11 @@ class GovernanceLoop:
         )
         sufficiency = assess_sufficiency(evidence)
         lineage = drilldown(self.graph, source_table, target_table)
-        authorization = reference_authorization_verifier().verify(
-            action.authorization_identity,
-            action.action_type,
-            action.authorization_scope,
+        action, decision = prepare_autonomy_decision(
+            action,
+            self.authorization_verifier,
+            action.reversibility,
         )
-        decision = decide_autonomy(action, authorization)
         executed = (
             decision.level == AutonomyLevel.L3_BOUNDED
             and not decision.requires_human_review

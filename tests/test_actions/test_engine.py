@@ -8,6 +8,7 @@ from sqlgraph.actions import (
     ActionEngine,
     ActionRequest,
     AdapterExecutionError,
+    DuckDBTaskAdapter,
     SqlFilePatchAdapter,
 )
 from sqlgraph.autonomy import (
@@ -156,3 +157,68 @@ def test_multi_patch_failure_restores_true_original(tmp_path):
 
     assert rollback.verified
     assert path.read_text(encoding="utf-8") == "A B"
+
+
+def test_sql_file_adapter_verifies_recovery_on_isolated_copy(tmp_path):
+    path = tmp_path / "query.sql"
+    before = "SELECT value * 100 FROM source"
+    path.write_text(before, encoding="utf-8")
+    operations = (
+        _operation(path, before, "SELECT value FROM source"),
+    )
+
+    evidence = SqlFilePatchAdapter().verify_reversibility(operations)
+
+    assert evidence.verified
+    assert "adapter:sql_file_patch" in evidence.references
+    assert path.read_text(encoding="utf-8") == before
+
+
+def test_duckdb_adapter_verifies_recovery_on_isolated_copy(tmp_path):
+    import duckdb
+
+    database = tmp_path / "warehouse.duckdb"
+    with duckdb.connect(str(database)) as connection:
+        connection.execute("CREATE TABLE source AS SELECT 1 AS id")
+    original_hash = hashlib.sha256(database.read_bytes()).hexdigest()
+
+    evidence = DuckDBTaskAdapter().verify_reversibility((
+        {
+            "database_path": str(database),
+            "statements": ("CREATE TABLE target AS SELECT * FROM source",),
+        },
+        {
+            "database_path": str(database),
+            "statements": ("INSERT INTO target SELECT * FROM source",),
+        },
+    ))
+
+    assert evidence.verified
+    assert "adapter:duckdb_tasks" in evidence.references
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == original_hash
+
+
+def test_action_engine_exposes_adapter_reversibility_evidence(tmp_path):
+    path = tmp_path / "query.sql"
+    before = "SELECT value * 100 FROM source"
+    path.write_text(before, encoding="utf-8")
+    engine = ActionEngine([SqlFilePatchAdapter()])
+
+    evidence = engine.verify_reversibility(
+        "sql_file_patch",
+        (_operation(path, before, "SELECT value FROM source"),),
+    )
+
+    assert evidence.verified
+    assert evidence.references[0] == "adapter:sql_file_patch"
+
+
+@pytest.mark.parametrize(
+    "adapter",
+    [SqlFilePatchAdapter(), DuckDBTaskAdapter()],
+)
+def test_empty_operation_list_is_not_reversible(adapter):
+    evidence = adapter.verify_reversibility(())
+
+    assert not evidence.verified
+    assert "probe-error:no-operations" in evidence.references

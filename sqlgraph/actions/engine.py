@@ -15,7 +15,7 @@ from sqlgraph.actions.model import (
     DryRunResult,
     ExecutionResult,
 )
-from sqlgraph.autonomy import AutonomyLevel
+from sqlgraph.autonomy import AutonomyLevel, ReversibilityEvidence
 from sqlgraph.identity import stable_id
 
 
@@ -25,6 +25,21 @@ class ActionEngine:
         self._executions: dict[str, ExecutionResult] = {}
         self._rollback_states: dict[str, dict] = {}
         self.circuit_open = False
+
+    def verify_reversibility(
+        self,
+        adapter: str,
+        operations: tuple[dict, ...],
+    ) -> ReversibilityEvidence:
+        implementation = self._adapters.get(adapter)
+        if implementation is None:
+            return ReversibilityEvidence(
+                False,
+                False,
+                False,
+                (f"adapter:unknown:{adapter}",),
+            )
+        return implementation.verify_reversibility(operations)
 
     def plan(self, request: ActionRequest) -> ActionPlan:
         decision = request.decision

@@ -3,6 +3,7 @@
 
 """Public seven-step governance runner interface."""
 
+from sqlgraph.reasoning.policy import prepare_autonomy_decision
 from sqlgraph.reasoning.runner import (
     STEPS,
     GovernanceRequest,
@@ -15,4 +16,5 @@ __all__ = [
     "GovernanceRequest",
     "GovernanceResult",
     "GovernanceRunner",
+    "prepare_autonomy_decision",
 ]

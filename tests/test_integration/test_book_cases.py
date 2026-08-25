@@ -26,5 +26,6 @@ def test_book_case_exports_replayable_bundle(case, outcome, tmp_path):
     assert AuditLog(result.audit_path).verify_integrity().valid
     assert len(result.events) == 7
     if case == "irreversible_drop":
-        assert result.decision.reversibility_veto
+        assert not result.decision.reversibility_veto
+        assert result.decision.authorization_veto
         assert result.execution.status == "blocked"

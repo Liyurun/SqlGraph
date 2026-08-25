@@ -7,8 +7,11 @@ from __future__ import annotations
 
 import hashlib
 import shutil
+import tempfile
 from pathlib import Path
 from typing import Any, Protocol
+
+from sqlgraph.autonomy import ReversibilityEvidence
 
 
 class AdapterExecutionError(RuntimeError):
@@ -19,6 +22,12 @@ class AdapterExecutionError(RuntimeError):
 
 class ActionAdapter(Protocol):
     name: str
+
+    def verify_reversibility(
+        self,
+        operations: tuple[dict[str, Any], ...],
+    ) -> ReversibilityEvidence:
+        ...
 
     def dry_run(self, operations: tuple[dict[str, Any], ...]) -> tuple[str, ...]:
         ...
@@ -37,8 +46,77 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _probe_failure(adapter: str, reason: str) -> ReversibilityEvidence:
+    return ReversibilityEvidence(
+        False,
+        False,
+        False,
+        (f"adapter:{adapter}", f"probe-error:{reason}"),
+    )
+
+
 class SqlFilePatchAdapter:
     name = "sql_file_patch"
+
+    def verify_reversibility(
+        self,
+        operations: tuple[dict[str, Any], ...],
+    ) -> ReversibilityEvidence:
+        if not operations:
+            return _probe_failure(self.name, "no-operations")
+        with tempfile.TemporaryDirectory(
+            prefix="sqlgraph-file-probe-"
+        ) as raw_directory:
+            directory = Path(raw_directory)
+            copies: dict[str, Path] = {}
+            original_hashes: dict[str, str] = {}
+            probe_operations = []
+            try:
+                for operation in operations:
+                    source = Path(operation["path"]).resolve()
+                    source_key = str(source)
+                    if source_key not in copies:
+                        probe = directory / (
+                            f"{len(copies):04d}-{source.name}"
+                        )
+                        shutil.copy2(source, probe)
+                        copies[source_key] = probe
+                        original_hashes[source_key] = _sha256(
+                            source.read_text(encoding="utf-8")
+                        )
+                    probe_operation = dict(operation)
+                    probe_operation["path"] = str(copies[source_key])
+                    probe_operation.pop("inject_failure_after_apply", None)
+                    probe_operations.append(probe_operation)
+
+                normalized = tuple(probe_operations)
+                self.dry_run(normalized)
+                _, rollback_state = self.execute(normalized)
+                rollback = self.rollback(rollback_state)
+                restored = rollback.verified and all(
+                    _sha256(probe.read_text(encoding="utf-8"))
+                    == original_hashes[source]
+                    for source, probe in copies.items()
+                )
+                source_unchanged = all(
+                    _sha256(Path(source).read_text(encoding="utf-8"))
+                    == digest
+                    for source, digest in original_hashes.items()
+                )
+            except Exception as exc:
+                return _probe_failure(self.name, type(exc).__name__)
+
+        verified = restored and source_unchanged
+        return ReversibilityEvidence(
+            state_restorable=verified,
+            external_effects_controlled=True,
+            rollback_verified=verified,
+            references=(
+                "adapter:sql_file_patch",
+                "probe:isolated-copy",
+                *(f"rollback-sha256:{digest}" for digest in original_hashes.values()),
+            ),
+        )
 
     def _simulate(
         self,
@@ -140,6 +218,74 @@ class SqlFilePatchAdapter:
 class DuckDBTaskAdapter:
     name = "duckdb_tasks"
 
+    def verify_reversibility(
+        self,
+        operations: tuple[dict[str, Any], ...],
+    ) -> ReversibilityEvidence:
+        if not operations:
+            return _probe_failure(self.name, "no-operations")
+        with tempfile.TemporaryDirectory(
+            prefix="sqlgraph-duckdb-probe-"
+        ) as raw_directory:
+            directory = Path(raw_directory)
+            copies: dict[str, Path] = {}
+            snapshots: dict[str, Path] = {}
+            original_hashes: dict[str, str] = {}
+            probe_operations = []
+            try:
+                for operation in operations:
+                    source = Path(operation["database_path"]).resolve()
+                    source_key = str(source)
+                    if source_key not in copies:
+                        probe = directory / (
+                            f"{len(copies):04d}-{source.name}"
+                        )
+                        snapshot = directory / (
+                            f"{len(copies):04d}-{source.name}.snapshot"
+                        )
+                        shutil.copy2(source, probe)
+                        copies[source_key] = probe
+                        snapshots[source_key] = snapshot
+                        original_hashes[source_key] = hashlib.sha256(
+                            source.read_bytes()
+                        ).hexdigest()
+                    probe_operation = dict(operation)
+                    probe_operation["database_path"] = str(copies[source_key])
+                    probe_operation["snapshot_path"] = str(
+                        snapshots[source_key]
+                    )
+                    probe_operation.pop("inject_failure_after_apply", None)
+                    probe_operations.append(probe_operation)
+
+                normalized = tuple(probe_operations)
+                self.dry_run(normalized)
+                _, rollback_state = self.execute(normalized)
+                rollback = self.rollback(rollback_state)
+                restored = rollback.verified and all(
+                    hashlib.sha256(probe.read_bytes()).hexdigest()
+                    == original_hashes[source]
+                    for source, probe in copies.items()
+                )
+                source_unchanged = all(
+                    hashlib.sha256(Path(source).read_bytes()).hexdigest()
+                    == digest
+                    for source, digest in original_hashes.items()
+                )
+            except Exception as exc:
+                return _probe_failure(self.name, type(exc).__name__)
+
+        verified = restored and source_unchanged
+        return ReversibilityEvidence(
+            state_restorable=verified,
+            external_effects_controlled=True,
+            rollback_verified=verified,
+            references=(
+                "adapter:duckdb_tasks",
+                "probe:isolated-copy",
+                *(f"rollback-sha256:{digest}" for digest in original_hashes.values()),
+            ),
+        )
+
     def dry_run(self, operations: tuple[dict[str, Any], ...]) -> tuple[str, ...]:
         checks = []
         for operation in operations:
@@ -167,8 +313,10 @@ class DuckDBTaskAdapter:
                     "snapshot_path",
                     f"{database}.sqlgraph-backup",
                 )).resolve()
-                shutil.copy2(database, snapshot)
-                snapshots[str(database)] = str(snapshot)
+                database_key = str(database)
+                if database_key not in snapshots:
+                    shutil.copy2(database, snapshot)
+                    snapshots[database_key] = str(snapshot)
                 with duckdb.connect(str(database)) as connection:
                     connection.execute("BEGIN")
                     for statement in operation["statements"]:

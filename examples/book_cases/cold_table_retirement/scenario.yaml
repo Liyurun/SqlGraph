@@ -16,12 +16,6 @@ action:
   object_risk: 0.2
   historical_reliability: 0.9
   roi: 0.7
-  reversibility:
-    state_restorable: true
-    external_effects_controlled: true
-    rollback_verified: true
-    references:
-      - file-content-backup
   after: |
     INSERT INTO cold_table_archive
     SELECT event_id, event_date

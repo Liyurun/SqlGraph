@@ -16,7 +16,19 @@ from sqlgraph.reasoning import GovernanceRequest, GovernanceRunner
 from sqlgraph.verification import VerificationEngine
 
 
-def test_runner_exports_all_seven_steps(tmp_path):
+class RejectingReversibilityAdapter:
+    name = "sql_file_patch"
+
+    def verify_reversibility(self, operations):
+        return ReversibilityEvidence(
+            False,
+            False,
+            False,
+            ("adapter:test-reject",),
+        )
+
+
+def _governance_case(tmp_path, adapter):
     path = tmp_path / "query.sql"
     before = "INSERT INTO dst SELECT value * 100 AS value FROM src"
     after = "INSERT INTO dst SELECT value AS value FROM src"
@@ -66,9 +78,17 @@ def test_runner_exports_all_seven_steps(tmp_path):
     )
     runner = GovernanceRunner(
         EvidenceEngine(graph),
-        ActionEngine([SqlFilePatchAdapter()]),
+        ActionEngine([adapter]),
         VerificationEngine(),
         AuditLog(tmp_path / "audit.jsonl"),
+    )
+    return runner, request, path, before
+
+
+def test_runner_exports_all_seven_steps(tmp_path):
+    runner, request, _, _ = _governance_case(
+        tmp_path,
+        SqlFilePatchAdapter(),
     )
 
     result = runner.run(request)
@@ -84,3 +104,17 @@ def test_runner_exports_all_seven_steps(tmp_path):
     ]
     assert result.outcome == "success"
     assert AuditLog(result.audit_path).verify_integrity().valid
+
+
+def test_runner_ignores_caller_reversibility_claim(tmp_path):
+    runner, request, path, before = _governance_case(
+        tmp_path,
+        RejectingReversibilityAdapter(),
+    )
+
+    result = runner.run(request)
+
+    assert result.decision.reversibility_veto
+    assert result.execution.status == "blocked"
+    assert result.decision.reasons[0].startswith("reversibility gate failed")
+    assert path.read_text(encoding="utf-8") == before

@@ -29,8 +29,6 @@ from sqlgraph.autonomy import (
     AuthorizationScope,
     GovernanceAction,
     ReversibilityEvidence,
-    decide_autonomy,
-    reference_authorization_verifier,
 )
 from sqlgraph.contract import BusinessContract, GovernanceIssue
 from sqlgraph.evidence import build_evidence_subgraph
@@ -354,12 +352,6 @@ def run_ctr_governance(
         historical_reliability=0.95,
         roi=0.9,
     )
-    authorization = reference_authorization_verifier().verify(
-        action.authorization_identity,
-        action.action_type,
-        action.authorization_scope,
-    )
-    decision = decide_autonomy(action, authorization)
     trail = GovernanceLoop(after_graph).run(
         TASK_ID,
         TARGET_TABLE,
@@ -430,7 +422,7 @@ def run_ctr_governance(
         "evidence": _evidence_payload(evidence),
         "contract": asdict(contract),
         "governance_issue": issue.to_dict() if issue else None,
-        "decision": decision.to_dict(),
+        "decision": trail.decision,
         "runtime": {
             "source": "duckdb_query",
             "thresholds": list(thresholds),

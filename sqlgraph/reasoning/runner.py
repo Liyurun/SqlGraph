@@ -21,12 +21,12 @@ from sqlgraph.autonomy import (
     AutonomyDecision,
     AutonomyLevel,
     GovernanceAction,
-    decide_autonomy,
     reference_authorization_verifier,
 )
 from sqlgraph.baseline import BaselineManifest
 from sqlgraph.evidence import EvidenceBundle, EvidenceEngine, EvidenceRequest
 from sqlgraph.graphrag import GroundedAssertion, validate_assertions
+from sqlgraph.reasoning.policy import prepare_autonomy_decision
 from sqlgraph.verification import (
     LayerResult,
     VerificationEngine,
@@ -178,17 +178,20 @@ class GovernanceRunner:
             evidence_version=evidence.version_id,
         )
 
+        reversibility = self.action_engine.verify_reversibility(
+            request.adapter,
+            request.operations,
+        )
         action = replace(
             request.action,
             evidence_version=evidence.version_id,
             evidence_grounded=grounded,
         )
-        authorization = self.authorization_verifier.verify(
-            action.authorization_identity,
-            action.action_type,
-            action.authorization_scope,
+        action, decision = prepare_autonomy_decision(
+            action,
+            self.authorization_verifier,
+            reversibility,
         )
-        decision = decide_autonomy(action, authorization)
         record(
             "authorize",
             decision.to_dict(),
