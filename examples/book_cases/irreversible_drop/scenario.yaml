@@ -16,11 +16,6 @@ action:
   object_risk: 0.1
   historical_reliability: 1.0
   roi: 1.0
-  reversibility:
-    state_restorable: false
-    external_effects_controlled: false
-    rollback_verified: false
-    references: []
   after: |
     DROP TABLE critical_orders;
 runtime:

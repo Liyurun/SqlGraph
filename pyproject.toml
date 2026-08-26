@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sqlgraph-lineage"
-version = "0.1.0"
+version = "0.1.1"
 description = "SQL-to-Knowledge-Graph engine for data warehouses: lineage, columns, and reusable transformation logic."
 authors = ["sqlgraph contributors"]
 license = "MIT"

@@ -3,6 +3,13 @@
 
 """Public autonomy policy interface."""
 
+from sqlgraph.autonomy.authorization import (
+    AuthorizationGrant,
+    AuthorizationVerification,
+    AuthorizationVerifier,
+    StaticAuthorizationVerifier,
+    reference_authorization_verifier,
+)
 from sqlgraph.autonomy.decision import (
     POLICY_VERSION,
     AuthorizationScope,
@@ -15,10 +22,15 @@ from sqlgraph.autonomy.decision import (
 
 __all__ = [
     "POLICY_VERSION",
+    "AuthorizationGrant",
     "AuthorizationScope",
+    "AuthorizationVerification",
+    "AuthorizationVerifier",
     "AutonomyDecision",
     "AutonomyLevel",
     "GovernanceAction",
     "ReversibilityEvidence",
+    "StaticAuthorizationVerifier",
     "decide_autonomy",
+    "reference_authorization_verifier",
 ]

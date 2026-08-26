@@ -8,6 +8,7 @@ from sqlgraph.autonomy import (
     GovernanceAction,
     ReversibilityEvidence,
     decide_autonomy,
+    reference_authorization_verifier,
 )
 from sqlgraph.verification import (
     LayerResult,
@@ -21,13 +22,20 @@ def _executed_patch(tmp_path):
     before = "INSERT INTO dst SELECT value * 100 AS value FROM src"
     after = "INSERT INTO dst SELECT value AS value FROM src"
     path.write_text(before, encoding="utf-8")
-    decision = decide_autonomy(GovernanceAction(
+    action = GovernanceAction(
         action_type="sql_patch",
         evidence_version="task-1@v1#abc",
         evidence_grounded=True,
         reversibility=ReversibilityEvidence(True, True, True),
         authorization_scope=AuthorizationScope.SINGLE_L3,
-    ))
+        authorization_identity="quickstart-policy",
+    )
+    authorization = reference_authorization_verifier().verify(
+        action.authorization_identity,
+        action.action_type,
+        action.authorization_scope,
+    )
+    decision = decide_autonomy(action, authorization)
     request = ActionRequest(
         task_id="task-1",
         baseline_id="base-1",

@@ -16,12 +16,6 @@ action:
   object_risk: 0.1
   historical_reliability: 0.95
   roi: 0.8
-  reversibility:
-    state_restorable: true
-    external_effects_controlled: true
-    rollback_verified: true
-    references:
-      - file-content-backup
   after: |
     INSERT INTO dst_metric
     SELECT clicks / impressions AS ctr

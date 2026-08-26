@@ -16,12 +16,6 @@ action:
   object_risk: 0.3
   historical_reliability: 0.95
   roi: 0.9
-  reversibility:
-    state_restorable: true
-    external_effects_controlled: true
-    rollback_verified: true
-    references:
-      - file-content-backup
   after: |
     INSERT INTO ads_creative_report
     SELECT clicks / impressions AS ctr

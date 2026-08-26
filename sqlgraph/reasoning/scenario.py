@@ -89,18 +89,15 @@ def run_scenario(
     graph = build_graph(source, dialect=scenario["dialect"])
     graph.metadata["baseline_id"] = baseline.baseline_id
     action_data = scenario["action"]
-    reversibility = action_data["reversibility"]
     action = GovernanceAction(
         action_type=action_data["type"],
         evidence_version="pending",
         evidence_grounded=False,
         reversibility=ReversibilityEvidence(
-            state_restorable=bool(reversibility["state_restorable"]),
-            external_effects_controlled=bool(
-                reversibility["external_effects_controlled"]
-            ),
-            rollback_verified=bool(reversibility["rollback_verified"]),
-            references=tuple(reversibility.get("references", ())),
+            state_restorable=False,
+            external_effects_controlled=False,
+            rollback_verified=False,
+            references=("unverified:adapter-probe-required",),
         ),
         authorization_scope=AuthorizationScope(
             action_data.get("authorization_scope", "none")

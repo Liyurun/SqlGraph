@@ -1,7 +1,7 @@
 # SqlGraph
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9--3.12-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.10--3.12-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/Liyurun/SqlGraph/actions/workflows/ci.yml/badge.svg)](https://github.com/Liyurun/SqlGraph/actions/workflows/ci.yml)
 [![SQLGlot](https://img.shields.io/badge/parser-SQLGlot-green.svg)](https://github.com/tobymao/sqlglot)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)

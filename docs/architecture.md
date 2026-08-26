@@ -26,28 +26,31 @@ clean boundary, so you can swap or extend any layer independently.
 - **`ColumnResolver`** binds every `exp.Column` to a physical `table.column`,
   using the query's source tables (CTE-inclusive) and the schema registry to
   disambiguate. Unresolvable columns fall back to `UNKNOWN.col`.
-- **`expr_dag.decompose()`** turns each non-passthrough output expression into a
-  single **fingerprinted logic node**:
+- **`expr_dag.decompose()`** preserves each non-passthrough output expression as
+  a stable root node, while **`decompose_operands()`** records nested operators
+  as a child-to-parent operand DAG:
   - all column references inside the expression are replaced with their resolved
     physical-column strings;
   - SQLGlot serializes the rewritten expression with `normalize=True`, giving a
     conservative canonical SQL string without algebraic equivalence inference;
-  - that canonical SQL string is hashed (SHA1, 128-bit) into the fingerprint;
-  - every physical column the expression reads is recorded as a dependency.
+  - the canonical SQL string produces a conservative 128-bit logic fingerprint;
+  - every physical column the expression reads is recorded as a dependency;
+  - nested functions and arithmetic operators are connected with
+    `expr_operand` edges without changing the root fingerprint.
 
   This fingerprint identifies identical physical-column-bound expression shapes
   across different SQL files. It intentionally does not treat `a + b` and
   `b + a` as equivalent. The builder combines the fingerprint with the output
   field name to decide Transform identity, so identical logic only collapses
-  when it produces the same downstream field. A whole composite expression such
-  as `ROUND(SUM(clicks)/COUNT(*), 4)` is **one** node — it is not decomposed into
-  sub-nodes.
+  when it produces the same downstream field. A composite expression such as
+  `ROUND(SUM(clicks)/COUNT(*), 4)` therefore has one stable output root plus
+  inspectable nested operand nodes.
 
 ## 3. Builder (`sqlgraph/builder`)
 
 - **`GraphBuilder`** materializes the graph from parse results:
-  - tables and columns get **deterministic IDs** (96-bit SHA1 of their content
-    key) so the same entity is stable across files and runs;
+  - graph nodes and edges use deterministic `id-v2` identities derived from
+    SHA256 semantic keys, so the same entity is stable across files and runs;
   - transformation nodes are deduplicated by `expression fingerprint + output
     field name` (`_ensure_expr_node`);
   - for each output column it adds `contains` (SQL→expr),
@@ -74,6 +77,7 @@ An in-memory **`PropertyGraph`** of typed nodes and edges.
 | `has_column` | table → its column |
 | `contains` | SQL → a transformation it defines |
 | `compute_dependency` | physical column → transformation that consumes it |
+| `expr_operand` | nested transformation → parent transformation |
 | `produces` | transformation → output column |
 | `table_lineage` | source table → target table (cross-SQL) |
 
@@ -89,11 +93,12 @@ An in-memory **`PropertyGraph`** of typed nodes and edges.
 
 ## Design principles
 
-- **Determinism** — same SQL ⇒ same graph ⇒ same node IDs. Diffs are meaningful.
+- **Determinism** — same SQL ⇒ same graph ⇒ the same SHA256-derived `id-v2`
+  node and edge IDs. Diffs are meaningful.
 - **Physical precision** — node identity binds to resolved physical columns, not
   text, so lookalike expressions on different columns stay distinct.
-- **Scale** — 96/128-bit fingerprints keep collisions negligible even for
-  warehouses with millions of columns.
+- **Scale** — 96/128-bit truncated identities keep collisions negligible for
+  the reference warehouse scale, with collision detection during construction.
 
 ## Governance reference pipeline
 
@@ -108,8 +113,9 @@ Baseline -> HeteroGraph/TableGraph -> Evidence/Grounding -> Autonomy
 - `baseline` identifies the effective input and discloses missing dependencies.
 - `evidence` collects an intent-bound, versioned subgraph with coverage duties.
 - `graphrag` rejects assertions with missing, stale, or out-of-scope citations.
-- `autonomy` applies evidence, authorization, and reversibility gates before scoring.
-- `actions` provides idempotent file and DuckDB adapters with verified rollback.
+- `autonomy` accepts authorization only from an injected verifier before scoring.
+- `actions` derives reversibility evidence from isolated file and DuckDB probes,
+  then provides idempotent execution with verified rollback.
 - `verification` compares actual code, rebuilds structure, and checks runtime effects.
 - `audit` appends hash-chained events; `reasoning` orchestrates the seven steps.
 

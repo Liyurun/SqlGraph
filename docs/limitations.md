@@ -10,6 +10,12 @@
   must be supplied through adapters.
 - The included action adapters support local SQL files and DuckDB only. They are
   reference implementations, not production warehouse credentials or schedulers.
+- The bundled static authorization registry is for examples only. Production
+  deployments must inject an IAM- or approval-backed verifier.
+- Idempotency caches, circuit-breaker state, snapshots, and rollback guarantees
+  are local to one process and filesystem; they are not distributed transactions.
+- Adapter reversibility probes validate isolated local copies. They do not prove
+  that arbitrary external systems or side effects can be restored.
 - JSONL audit storage detects local mutation, deletion, and reordering but is not
   a distributed consensus ledger.
 - Runtime verification trusts the configured runtime adapter's observations.
@@ -20,3 +26,5 @@
   and 10,000 statement benchmarks run in a separate workflow.
 - SqlGraph does not bundle an LLM, approval platform, identity provider, metadata
   catalog, or production scheduler.
+- `sqlgraph.agent.GovernanceLoop` is a deprecated v0.1 compatibility facade.
+  New integrations should use `sqlgraph.reasoning.GovernanceRunner`.

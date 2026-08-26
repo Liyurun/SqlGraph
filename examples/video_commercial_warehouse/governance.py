@@ -29,7 +29,6 @@ from sqlgraph.autonomy import (
     AuthorizationScope,
     GovernanceAction,
     ReversibilityEvidence,
-    decide_autonomy,
 )
 from sqlgraph.contract import BusinessContract, GovernanceIssue
 from sqlgraph.evidence import build_evidence_subgraph
@@ -349,10 +348,10 @@ def run_ctr_governance(
         blast_radius=min(float(blast["score"]) / 10.0, 1.0),
         object_risk=0.4,
         authorization_scope=AuthorizationScope.SINGLE_L3,
+        authorization_identity="video-workbench-policy",
         historical_reliability=0.95,
         roi=0.9,
     )
-    decision = decide_autonomy(action)
     trail = GovernanceLoop(after_graph).run(
         TASK_ID,
         TARGET_TABLE,
@@ -423,7 +422,7 @@ def run_ctr_governance(
         "evidence": _evidence_payload(evidence),
         "contract": asdict(contract),
         "governance_issue": issue.to_dict() if issue else None,
-        "decision": decision.to_dict(),
+        "decision": trail.decision,
         "runtime": {
             "source": "duckdb_query",
             "thresholds": list(thresholds),
