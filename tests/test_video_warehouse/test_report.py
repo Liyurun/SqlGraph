@@ -141,3 +141,17 @@ def test_report_uses_github_explorer_visual_tokens(tmp_path):
     assert "background:#fff" not in text
     assert 'content="dark light"' not in text
     assert load_explorer_css() in text
+
+
+def test_report_keeps_detail_labels_readable(tmp_path):
+    root = tmp_path / "warehouse"
+    output = tmp_path / "out"
+    generate_sql(root)
+    result = run_ctr_governance(root, output, profile="smoke")
+    text = render_report(
+        result, output / "warehouse_report.html"
+    ).read_text(encoding="utf-8")
+
+    assert ".kv{display:grid;grid-template-columns:72px minmax(0,1fr)" in text
+    assert ".kv span{white-space:nowrap}" in text
+    assert ".kv b{min-width:0;overflow-wrap:anywhere" in text

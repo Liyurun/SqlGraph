@@ -76,7 +76,7 @@ cd SqlGraph
 pip install -e ".[all]"
 ```
 
-SqlGraph targets **Python 3.9 through 3.12** (CI runs the same version matrix).
+SqlGraph targets **Python 3.10 through 3.12** (CI runs the same version matrix).
 
 ## Running tests
 

@@ -51,18 +51,18 @@ capabilities:
     limitations: [Learn writes signals only and never expands authorization.]
   - id: autonomy-policy
     status: implemented
-    description: Evidence, authorization, reversibility, impact, risk, and reliability gates.
-    modules: [sqlgraph/autonomy]
-    tests: [tests/test_autonomy, tests/safety/test_autonomy_gates.py]
+    description: Evidence, verified grants, adapter-derived reversibility, impact, risk, and reliability gates.
+    modules: [sqlgraph/autonomy, sqlgraph/reasoning]
+    tests: [tests/test_autonomy, tests/test_reasoning/test_runner.py, tests/safety/test_autonomy_gates.py]
     examples: [examples/book_cases/irreversible_drop]
-    limitations: [Thresholds are reference defaults and must be calibrated per deployment.]
+    limitations: [The bundled static grant registry is a reference implementation; production deployments must inject their own authorization verifier.]
   - id: reversible-actions
     status: implemented
-    description: Idempotent file and DuckDB actions with dry run, circuit breaker, and verified rollback.
+    description: Idempotent file and DuckDB actions with isolated reversibility probes, dry run, circuit breaker, and verified rollback.
     modules: [sqlgraph/actions]
     tests: [tests/test_actions, tests/safety/test_execution_recovery.py]
     examples: [examples/book_cases/cold_table_retirement]
-    limitations: [Only local SQL files and DuckDB are included adapters.]
+    limitations: [Only local SQL files and DuckDB are included; idempotency and rollback state are local-process guarantees.]
   - id: three-layer-verification
     status: implemented
     description: Actual code comparison, independent graph rebuild, and runtime checks.
